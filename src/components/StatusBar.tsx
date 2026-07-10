@@ -14,7 +14,7 @@ const StatusBar: React.FC = () => {
   const activeJoint = useStore((state) => state.activeJoint);
   const cameraMode = useStore((state) => state.cameraMode);
   const setCameraMode = useStore((state) => state.setCameraMode);
-  const stepSize = useStore((state) => state.stepSize);
+
   
   const clearError = () => setError(null);
 
@@ -32,8 +32,8 @@ const StatusBar: React.FC = () => {
   return (
     <div style={{
       position: 'absolute', top: 0, left: 0, width: '100%', height: '60px',
-      background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(16px)',
-      borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+      background: 'rgba(20, 20, 20, 0.85)', backdropFilter: 'blur(16px)',
+      borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 1.5rem', zIndex: 100, boxSizing: 'border-box',
       boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
@@ -41,33 +41,31 @@ const StatusBar: React.FC = () => {
       
       {/* Left: Brand & Connection */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, letterSpacing: '2px', color: '#111' }}>VANTAGE</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#555' }}>
+        <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, letterSpacing: '2px', color: '#ff8c00' }}>VANTAGE</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#aaa' }}>
           WS: CONNECTED
         </div>
-        <div style={{ padding: '4px 10px', background: '#f1f5f9', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid #cbd5e1' }}>
+        <div style={{ padding: '4px 10px', background: '#333', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid #444', color: '#fff' }}>
           Input: {controlMode}
         </div>
-        <div style={{ padding: '4px 10px', background: '#2563eb', color: '#fff', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800, border: '1px solid #1d4ed8' }}>
-          ACTIVE SERVO: JOINT {activeJoint}
+        <div style={{ padding: '4px 10px', background: '#ff8c00', color: '#000', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800 }}>
+          JOINT {activeJoint}
         </div>
         {controlMode === 'MOUSE' && (
           <button 
              onClick={() => setCameraMode(!cameraMode)}
-             style={{ padding: '4px 10px', background: cameraMode ? '#eab308' : '#f1f5f9', color: cameraMode ? '#fff' : '#111', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid #cbd5e1', cursor: 'pointer' }}>
-            {cameraMode ? 'CAMERA PAN: ON' : 'CAMERA PAN: OFF'}
+             style={{ padding: '4px 10px', background: cameraMode ? '#ff8c00' : 'transparent', color: cameraMode ? '#000' : '#fff', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid #ff8c00', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            {cameraMode ? 'PAN: ON' : 'PAN: OFF'}
           </button>
         )}
-        <div style={{ padding: '4px 10px', background: '#f1f5f9', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid #cbd5e1' }}>
-          Step: {stepSize.toFixed(2)}
-        </div>
       </div>
 
       {/* Center: Status Badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <div style={{ 
           padding: '6px 16px', borderRadius: '20px', 
-          background: mode === 'ERROR' ? 'rgba(255,51,51,0.1)' : 'rgba(255,255,255,0.9)',
+          background: mode === 'ERROR' ? 'rgba(255,51,51,0.1)' : 'rgba(30,30,30,0.9)',
           border: `1px solid ${getStatusColor()}`,
           color: getStatusColor(), fontWeight: 'bold', letterSpacing: '1px',
           boxShadow: `0 0 10px ${getStatusColor()}20`,
@@ -100,7 +98,7 @@ const StatusBar: React.FC = () => {
             onClick={() => setShowGrid(!showGrid)}
             style={{
               width: '40px', height: '22px', borderRadius: '11px',
-              background: showGrid ? '#0066cc' : '#ccc',
+              background: showGrid ? '#ff8c00' : '#ccc',
               position: 'relative', cursor: 'pointer',
               transition: 'background 0.3s'
             }}
@@ -120,12 +118,12 @@ const StatusBar: React.FC = () => {
           onClick={mode === 'STOP' ? resetEStop : triggerEStop}
           style={{
             height: '32px', padding: '0 1.5rem',
-            background: mode === 'STOP' ? '#ffcc00' : '#b30000',
+            background: mode === 'STOP' ? '#ffcc00' : '#b22222',
             color: mode === 'STOP' ? '#000' : '#fff',
-            border: 'none', borderRadius: '20px',
+            border: 'none', borderRadius: '4px',
             fontWeight: 800, fontSize: '0.95rem', letterSpacing: '1px',
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-            boxShadow: `0 0 15px ${mode === 'STOP' ? '#ffcc00' : '#b30000'}60`,
+            boxShadow: `0 0 15px ${mode === 'STOP' ? '#ffcc00' : '#b22222'}60`,
             transition: 'all 0.2s'
           }}
         >

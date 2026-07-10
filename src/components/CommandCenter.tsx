@@ -1,99 +1,24 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '../store';
-import { NativeJoystick } from './NativeJoystick';
-import { commandBus } from '../bus/commandBus';
+
 import { runPinSequence, type SequenceStatus } from '../triggers/autonomous';
 import { fsm } from '../fsm';
 import TypedCommandInput from '../triggers/voice/TypedCommandInput';
 import { voiceTrigger, type VoiceState } from '../triggers/voice/voiceTrigger';
 
+import { initDualJoystickGUI } from '../triggers/joystick';
+
 const JoystickControls = () => {
-  const { rpm, setRpm, activeJoint, setActiveJoint } = useStore();
-  const rpmRef = useRef(rpm);
-  const activeJointRef = useRef(activeJoint);
+  const { rpm } = useStore();
+  const leftRef = useRef<HTMLDivElement>(null);
+  const rightRef = useRef<HTMLDivElement>(null);
+  const speedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    rpmRef.current = rpm;
-    activeJointRef.current = activeJoint;
-  }, [rpm, activeJoint]);
-
-  // Handle Y-axis (Toggle Joint)
-  const lastToggleRef = useRef(0);
-  const handleToggleMove = (_x: number, y: number) => {
-    const now = Date.now();
-    if (Math.abs(y) > 0.5 && now - lastToggleRef.current > 300) {
-      let next = activeJointRef.current + (y > 0 ? -1 : 1);
-      if (next < 1) next = 6;
-      if (next > 6) next = 1;
-      setActiveJoint(next);
-      lastToggleRef.current = now;
+    if (leftRef.current && rightRef.current && speedRef.current) {
+      const cleanup = initDualJoystickGUI(leftRef.current, rightRef.current, speedRef.current);
+      return cleanup;
     }
-  };
-
-  // Handle Speed Stick
-  const speedIntervalRef = useRef<number | null>(null);
-  const handleSpeedMove = (_x: number, y: number) => {
-    if (Math.abs(y) > 0.1) {
-      if (speedIntervalRef.current === null) {
-        speedIntervalRef.current = window.setInterval(() => {
-          setRpm(Math.max(0, Math.min(255, rpmRef.current + y * 2)));
-        }, 50);
-      }
-    } else {
-      if (speedIntervalRef.current !== null) {
-        clearInterval(speedIntervalRef.current);
-        speedIntervalRef.current = null;
-      }
-    }
-  };
-  const handleSpeedEnd = () => {
-    if (speedIntervalRef.current !== null) {
-      clearInterval(speedIntervalRef.current);
-      speedIntervalRef.current = null;
-    }
-  };
-
-  // Handle X-axis (Rotate Servo)
-  const rotationDirRef = useRef(0);
-  const rotationIntervalRef = useRef<number | null>(null);
-
-  const handleRotateMove = (x: number, _y: number) => {
-    if (x > 0.3) rotationDirRef.current = 1;
-    else if (x < -0.3) rotationDirRef.current = -1;
-    else rotationDirRef.current = 0;
-
-    if (rotationDirRef.current !== 0 && rotationIntervalRef.current === null) {
-      rotationIntervalRef.current = window.setInterval(() => {
-        const state = useStore.getState();
-        if (state.isEStop || state.mode === 'ERROR' || state.mode === 'EXECUTE') return;
-        
-        commandBus.submit({
-          id: crypto.randomUUID(),
-          timestamp: Date.now(),
-          source: 'joystick',
-          type: 'setJoint',
-          joint: { name: `joint_${state.activeJoint}`, delta: rotationDirRef.current * state.stepSize }
-        });
-      }, 100);
-    } else if (rotationDirRef.current === 0 && rotationIntervalRef.current !== null) {
-      clearInterval(rotationIntervalRef.current);
-      rotationIntervalRef.current = null;
-    }
-  };
-
-  const handleRotateEnd = () => {
-    rotationDirRef.current = 0;
-    if (rotationIntervalRef.current !== null) {
-      clearInterval(rotationIntervalRef.current);
-      rotationIntervalRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (rotationIntervalRef.current !== null) clearInterval(rotationIntervalRef.current);
-      if (speedIntervalRef.current !== null) clearInterval(speedIntervalRef.current);
-    };
   }, []);
 
   return (
@@ -104,23 +29,30 @@ const JoystickControls = () => {
       </div>
       
       <div style={{ display: 'flex', gap: '2rem', width: '100%', justifyContent: 'center' }}>
-        <NativeJoystick color="#9933ff" label="Toggle Joint (Y)" lockX onMove={handleToggleMove} onEnd={() => {}} />
-        <NativeJoystick color="#00ccff" label="Rotate Servo (X)" lockY onMove={handleRotateMove} onEnd={handleRotateEnd} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+          <div ref={leftRef} style={{ width: '100px', height: '100px', position: 'relative' }} />
+          <span style={{ fontSize: '0.7rem', color: '#555' }}>Toggle Joint (Y)</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+          <div ref={rightRef} style={{ width: '100px', height: '100px', position: 'relative' }} />
+          <span style={{ fontSize: '0.7rem', color: '#555' }}>Rotate Servo (X)</span>
+        </div>
       </div>
 
       <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <NativeJoystick color="#ff3366" label="Speed Control (Y)" lockX onMove={handleSpeedMove} onEnd={handleSpeedEnd} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+          <div ref={speedRef} style={{ width: '100px', height: '100px', position: 'relative' }} />
+          <span style={{ fontSize: '0.7rem', color: '#555' }}>Speed Control (Y)</span>
+        </div>
       </div>
     </div>
   );
 };
 
 export const CommandCenter: React.FC = () => {
-  const { mode, controlMode, setControlMode, setActiveCommand, addLog, cameraMode, setCameraMode, rpm, setRpm } = useStore();
+  const { mode, controlMode, setControlMode, addLog, cameraMode, setCameraMode, rpm, setRpm } = useStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
-  const joystickRef = useRef<HTMLDivElement>(null);
-  const zSliderRef = useRef<HTMLInputElement>(null);
 
   // Auto State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -150,8 +82,15 @@ export const CommandCenter: React.FC = () => {
     
     runPinSequence(pin, (status) => {
       setSeqStatus({...status});
-      if (status.status === 'SUCCESS') {
-        addLog({ source: 'autonomous', type: 'success', message: 'PIN sequence completed successfully' });
+      
+      const activeDigit = status.status === 'EXECUTING' && status.activeDigitIndex >= 0 && (status.phase === 'descending' || status.phase === 'pressed')
+        ? status.pin[status.activeDigitIndex] 
+        : null;
+      useStore.getState().setActiveSequenceDigit(activeDigit);
+
+      if (status.status === 'SUCCESS' || status.status === 'FAULT' || status.status === 'IDLE') {
+        if (status.status === 'SUCCESS') addLog({ source: 'autonomous', type: 'success', message: 'PIN sequence completed successfully' });
+        useStore.getState().setActiveSequenceDigit(null);
       }
     });
   };
@@ -193,11 +132,11 @@ export const CommandCenter: React.FC = () => {
     <div className="glass-panel" style={{ width: '100%', display: 'flex', flexDirection: 'column', zIndex: 10, boxSizing: 'border-box' }}>
       
       {/* Header with Hamburger */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-        <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#111', display: 'flex', alignItems: 'center', gap: '0.5rem', lineHeight: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#eee', display: 'flex', alignItems: 'center', gap: '0.5rem', lineHeight: 1 }}>
           {controlMode === 'JOYSTICK' && <>Joystick</>}
           {controlMode === 'MOUSE' && <>Mouse Control</>}
-          {controlMode === 'Keyboard' && <>Keyboard</>}
+          {controlMode === 'KEYBOARD' && <>Keyboard</>}
           {controlMode === 'VOICE' && <>Voice Control</>}
           {controlMode === 'PIN' && <>Auto / PIN</>}
           {controlMode === 'AGENTIC' && <>Agentic</>}
@@ -208,35 +147,35 @@ export const CommandCenter: React.FC = () => {
       </div>
 
       {isMenuOpen && (
-        <div style={{ display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.9)', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', background: 'rgba(20,20,20,0.95)', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           <button 
             onClick={() => { setControlMode('JOYSTICK'); setIsMenuOpen(false); }}
-            style={{ padding: '1rem', background: controlMode === 'JOYSTICK' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'JOYSTICK' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            style={{ padding: '1rem', background: controlMode === 'JOYSTICK' ? '#111' : 'transparent', border: 'none', color: controlMode === 'JOYSTICK' ? '#FAF9F6' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >Joystick</button>
           
           <button 
             onClick={() => { setControlMode('MOUSE'); setIsMenuOpen(false); }}
-            style={{ padding: '1rem', background: controlMode === 'MOUSE' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'MOUSE' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            style={{ padding: '1rem', background: controlMode === 'MOUSE' ? '#111' : 'transparent', border: 'none', color: controlMode === 'MOUSE' ? '#FAF9F6' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >Mouse Control</button>
           
           <button 
-            onClick={() => { setControlMode('Keyboard'); setIsMenuOpen(false); }}
-            style={{ padding: '1rem', background: controlMode === 'Keyboard' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'Keyboard' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            onClick={() => { setControlMode('KEYBOARD'); setIsMenuOpen(false); }}
+            style={{ padding: '1rem', background: controlMode === 'KEYBOARD' ? '#111' : 'transparent', border: 'none', color: controlMode === 'KEYBOARD' ? '#FAF9F6' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >Keyboard</button>
           
           <button 
             onClick={() => { setControlMode('VOICE'); setIsMenuOpen(false); }}
-            style={{ padding: '1rem', background: controlMode === 'VOICE' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'VOICE' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            style={{ padding: '1rem', background: controlMode === 'VOICE' ? '#111' : 'transparent', border: 'none', color: controlMode === 'VOICE' ? '#FAF9F6' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >Voice Control</button>
           
           <button 
             onClick={() => { setControlMode('PIN'); setIsMenuOpen(false); }}
-            style={{ padding: '1rem', background: controlMode === 'PIN' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'PIN' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            style={{ padding: '1rem', background: controlMode === 'PIN' ? '#111' : 'transparent', border: 'none', color: controlMode === 'PIN' ? '#FAF9F6' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >Auto / PIN</button>
           
           <button 
             onClick={() => { setControlMode('AGENTIC'); setIsMenuOpen(false); }}
-            style={{ padding: '1rem', background: controlMode === 'AGENTIC' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'AGENTIC' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            style={{ padding: '1rem', background: controlMode === 'AGENTIC' ? '#111' : 'transparent', border: 'none', color: controlMode === 'AGENTIC' ? '#FAF9F6' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >Agentic</button>
         </div>
       )}
@@ -283,7 +222,7 @@ export const CommandCenter: React.FC = () => {
         )}
 
         {/* Keyboard MODE */}
-        {controlMode === 'Keyboard' && (
+        {controlMode === 'KEYBOARD' && (
           <div style={{ textAlign: 'center', padding: '0.5rem 0', color: '#555' }}>
 
             <p style={{ margin: 0, fontWeight: 'bold' }}>Keyboard Control Active</p>
@@ -298,10 +237,10 @@ export const CommandCenter: React.FC = () => {
 
         {/* AUTO / PIN MODE */}
         {controlMode === 'PIN' && (
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: '200px' }}>
             {!isAuthenticated ? (
-              <div style={{ textAlign: 'center' }}>
-                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#111' }}>🔒 System Locked</h3>
+              <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#111' }}>System Locked</h3>
                 <p style={{ fontSize: '0.8rem', color: '#555', marginBottom: '1rem' }}>Enter secret PIN to unlock physical command execution.</p>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginBottom: '1rem' }}>
                   <input 
@@ -321,14 +260,14 @@ export const CommandCenter: React.FC = () => {
                       alert('Access Denied');
                     }
                   }}
-                  style={{ padding: '0.5rem 1.5rem', background: 'linear-gradient(135deg, #0066cc, #004c99)', color: '#fff', border: 'none', borderRadius: '50px', cursor: 'pointer', fontWeight: 'bold' }}
+                  className="btn-industrial"
                 >
                   Authenticate
                 </button>
               </div>
             ) : (
-              <div>
-                <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111' }}>🔓 Execute Physical Sequence</h3>
+              <div style={{ width: '100%' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111', textAlign: 'center' }}>Execute Physical Sequence</h3>
                 <p style={{ fontSize: '0.75rem', color: '#666', marginBottom: '1rem' }}>Enter a 6-digit sequence to press (keys 1-6 only).</p>
 
                 {seqError && (
@@ -360,17 +299,7 @@ export const CommandCenter: React.FC = () => {
                             }} 
                             style={{ padding: '0.35rem 1rem', cursor: 'pointer', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', fontWeight: 'bold' }}
                           >
-                            {isPaused ? '▶ Play' : '⏸ Pause'}
-                          </button>
-                          <button 
-                            onClick={() => { 
-                              fsm.reset(); 
-                              setSeqStatus({...seqStatus, status: 'FAULT'}); 
-                              setIsPaused(false);
-                            }} 
-                            style={{ padding: '0.35rem 1rem', cursor: 'pointer', color: 'red', background: '#fff', border: '1px solid #f99', borderRadius: '4px', fontWeight: 'bold' }}
-                          >
-                            ⏹ Reset
+                            {isPaused ? 'Play' : 'Pause'}
                           </button>
                         </div>
                       </>
@@ -422,7 +351,7 @@ export const CommandCenter: React.FC = () => {
               </div>
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* VOICE MODE */}

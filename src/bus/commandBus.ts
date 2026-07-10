@@ -102,7 +102,10 @@ class CommandBus {
       proposedJoints = ikResult.jointAngles;
       ikError = ikResult.error;
     } else if (command.type === 'setJoint' && command.joint) {
-      proposedJoints = { ...useStore.getState().joints, [command.joint.name]: command.joint.value };
+      const jointName = command.joint.name as keyof JointState;
+      const currentVal = useStore.getState().joints[jointName] || 0;
+      const newVal = command.joint.delta !== undefined ? currentVal + command.joint.delta : (command.joint.value || 0);
+      proposedJoints = { ...useStore.getState().joints, [jointName]: newVal };
     } else if (command.type === 'moveTo' && command.target) {
       const currentJoints = useStore.getState().joints;
       const ikResult = solveIK(command.target, currentJoints);

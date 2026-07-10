@@ -80,7 +80,7 @@ export const AuditLog: React.FC = () => {
             />
             
             <div style={{ padding: '1rem 1.5rem', background: '#fff', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-              <button onClick={() => setReportText(null)} style={{ padding: '0.6rem 1.2rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Close</button>
+              <button onClick={() => setReportText(null)} style={{ padding: '0.6rem 1.2rem', background: '#222', color: '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Close</button>
               <button onClick={() => downloadReport('csv')} style={{ padding: '0.6rem 1.2rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Download .csv</button>
               <button onClick={() => downloadReport('html')} style={{ padding: '0.6rem 1.2rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Download .html</button>
             </div>
@@ -97,7 +97,7 @@ export const AuditLog: React.FC = () => {
           onClick={() => setIsPaused(!isPaused)} 
           style={{ 
             width: '28px', height: '28px', borderRadius: '50%', border: 'none', 
-            background: isPaused ? '#0066cc' : '#f59e0b', color: '#fff', 
+            background: isPaused ? '#ff6600' : '#f59e0b', color: '#fff', 
             display: 'flex', alignItems: 'center', justifyContent: 'center', 
             cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' 
           }}
@@ -111,11 +111,11 @@ export const AuditLog: React.FC = () => {
         style={{ 
           flex: 1, 
           overflowY: 'auto', 
-          background: 'rgba(255,255,255,0.8)', 
-          border: '1px solid #ccc',
-          borderRadius: '8px', 
+          background: '#111', 
+          border: '1px solid #333',
+          borderRadius: '4px', 
           padding: '0.5rem',
-          fontFamily: 'monospace',
+          fontFamily: '"JetBrains Mono", monospace',
           fontSize: '0.75rem',
           display: 'flex',
           flexDirection: 'column',
@@ -124,13 +124,13 @@ export const AuditLog: React.FC = () => {
         }}
       >
         {isPaused && logs.length === 0 && (
-          <div style={{ color: '#666', textAlign: 'center', marginTop: '1rem' }}>Paused. Click ▶ to record.</div>
+          <div style={{ color: '#aaa', textAlign: 'center', marginTop: '1rem' }}>Paused. Click ▶ to record.</div>
         )}
         {!isPaused && logs.length === 0 && (
-          <div style={{ color: '#666', textAlign: 'center', marginTop: '1rem' }}>Recording... Waiting for commands.</div>
+          <div style={{ color: '#aaa', textAlign: 'center', marginTop: '1rem' }}>Recording... Waiting for commands.</div>
         )}
         {[...logs].map(log => {
-          let color = '#333';
+          let color = '#eee';
           if (log.verdict === 'REJECTED') {
              color = '#cc0000';
           } else if (log.verdict === 'ACCEPTED') {
@@ -140,10 +140,10 @@ export const AuditLog: React.FC = () => {
           const time = new Date(log.timestamp).toISOString().split('T')[1].slice(0, -1);
 
           return (
-            <div key={log.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '4px' }}>
+            <div key={log.id} style={{ display: 'flex', flexDirection: 'column', gap: '2px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <span style={{ color: '#888', minWidth: '85px' }}>[{time}]</span>
-                <span style={{ color: '#555', minWidth: '70px', fontWeight: 'bold' }}>[{log.command.source}]</span>
+                <span style={{ color: '#aaa', minWidth: '70px', fontWeight: 'bold' }}>[{log.command.source}]</span>
                 <span style={{ color, display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {log.command.type} - {log.verdict}
                   {log.reason && <span style={{ opacity: 0.7 }}>({log.reason})</span>}
@@ -156,21 +156,8 @@ export const AuditLog: React.FC = () => {
 
       <button 
         onClick={handleGenerateReport}
-        style={{
-          marginTop: '1rem',
-          width: '100%',
-          padding: '0.75rem',
-          background: 'linear-gradient(135deg, #10b981, #059669)',
-          border: 'none',
-          color: '#fff',
-          borderRadius: '50px',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)',
-          transition: 'transform 0.1s'
-        }}
-        onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
-        onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
+        className="btn-industrial"
+        style={{ marginTop: '1rem', width: '100%' }}
       >
         Generate Report
       </button>

@@ -4,10 +4,6 @@ import { OrbitControls } from '@react-three/drei';
 import RobotSimulator from './components/RobotSimulator';
 import CommandCenter from './components/CommandCenter';
 
-import ControlPanel from './components/ControlPanel';
-import VoicePanel from './triggers/voice/VoicePanel';
-import TypedCommandInput from './triggers/voice/TypedCommandInput';
-import AgentPanel from './agent/AgentPanel';
 
 import AuditLog from './components/AuditLog';
 import TelemetryDashboard from './components/TelemetryDashboard';
@@ -23,7 +19,7 @@ function App() {
 
   // Initialize Keyboard Trigger
   useEffect(() => {
-    if (controlMode === 'Keyboard') {
+    if (controlMode === 'KEYBOARD') {
       const cleanup = initKeyboardTrigger();
       return cleanup;
     }
@@ -41,7 +37,7 @@ function App() {
   }, [controlMode, cameraMode]); // Re-run if cameraMode changes so the trigger can attach/detach correctly or handle the state. Actually the trigger reads the store dynamically, but the event listeners might need to be on the canvas which doesn't change.
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#e2e8f0', color: '#111', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#0a0a0a', position: 'relative', display: 'flex', flexDirection: 'column' }}>
       <StatusBar />
       <div style={{ flex: 1, position: 'relative', marginTop: '60px', display: 'flex' }}>
 
@@ -61,10 +57,7 @@ function App() {
           {/* Left Sidebar Stack */}
           <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%', width: '380px', overflowY: 'auto', paddingRight: '0.5rem' }}>
             <CommandCenter />
-            <ControlPanel />
-            <VoicePanel />
-            <TypedCommandInput />
-            <AgentPanel />
+
             <TelemetryDashboard />
             <div style={{ flex: 1, minHeight: 0 }}>
               <AuditLog />
