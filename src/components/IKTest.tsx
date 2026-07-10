@@ -1,4 +1,3 @@
-import React from 'react';
 import { useStore } from '../store';
 
 /** Simple UI to exercise the inverse‑kinematics solver.
@@ -8,7 +7,7 @@ export default function IKTest() {
   const setActiveCommand = useStore((state) => state.setActiveCommand);
 
   const handleTest = () => {
-    const target = { x: 0.3, y: 0.2, z: 0.4, approach: [0, 0, -1] };
+    const target = { x: 0.3, y: 0.2, z: 0.4, approach: [0, 0, -1] as [number, number, number] };
     setActiveCommand({
       id: crypto.randomUUID(),
       timestamp: Date.now(),

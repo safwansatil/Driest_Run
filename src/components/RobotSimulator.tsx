@@ -101,17 +101,17 @@ const RobotSimulator = () => {
         {keys.map(key => (
           <group key={key.id} position={key.pos}>
             <RoundedBox args={[0.04, 0.04, 0.015]} radius={0.005} smoothness={4} castShadow receiveShadow>
-              <meshStandardMaterial color="#0066cc" roughness={0.5} metalness={0.1} />
+              <meshStandardMaterial color="#111111" roughness={0.6} metalness={0.4} />
             </RoundedBox>
             
             <Text 
               position={[0, 0, 0.008]} 
               fontSize={0.02} 
-              color="#ffffff" 
+              color="#00ffcc" 
               anchorX="center" 
               anchorY="middle"
               outlineWidth={0.0005}
-              outlineColor="#ffffff"
+              outlineColor="#00ffcc"
             >
               {key.id}
             </Text>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
-import { MousePointerClick, Target, Mic, MicOff, Keyboard, Play, Navigation2, Menu, Mouse } from 'lucide-react';
+
 import nipplejs from 'nipplejs';
 
 export const CommandCenter: React.FC = () => {
@@ -160,14 +160,14 @@ export const CommandCenter: React.FC = () => {
       {/* Header with Hamburger */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
         <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#111', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {controlMode === 'JOYSTICK' && <><MousePointerClick size={18} /> Joystick</>}
-          {controlMode === 'MOUSE' && <><Mouse size={18} /> Mouse Control</>}
-          {controlMode === 'WASD' && <><Keyboard size={18} /> WASD</>}
-          {controlMode === 'VOICE' && <><Mic size={18} /> Voice Control</>}
-          {controlMode === 'PIN' && <><Target size={18} /> Auto / PIN</>}
+          {controlMode === 'JOYSTICK' && <>Joystick</>}
+          {controlMode === 'MOUSE' && <>Mouse Control</>}
+          {controlMode === 'Keyboard' && <>Keyboard</>}
+          {controlMode === 'VOICE' && <>Voice Control</>}
+          {controlMode === 'PIN' && <>Auto / PIN</>}
         </h2>
-        <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '0.5rem', background: 'transparent', border: 'none' }}>
-          <Menu size={24} color="#333" />
+        <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '0.5rem', background: 'transparent', border: 'none', fontWeight: 'bold' }}>
+          MENU
         </button>
       </div>
 
@@ -176,27 +176,27 @@ export const CommandCenter: React.FC = () => {
           <button 
             onClick={() => { setControlMode('JOYSTICK'); setIsMenuOpen(false); }}
             style={{ padding: '1rem', background: controlMode === 'JOYSTICK' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'JOYSTICK' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          ><MousePointerClick size={16} /> Joystick</button>
+          >Joystick</button>
           
           <button 
             onClick={() => { setControlMode('MOUSE'); setIsMenuOpen(false); }}
             style={{ padding: '1rem', background: controlMode === 'MOUSE' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'MOUSE' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          ><Mouse size={16} /> Mouse Control</button>
+          >Mouse Control</button>
           
           <button 
-            onClick={() => { setControlMode('WASD'); setIsMenuOpen(false); }}
-            style={{ padding: '1rem', background: controlMode === 'WASD' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'WASD' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          ><Keyboard size={16} /> WASD</button>
+            onClick={() => { setControlMode('Keyboard'); setIsMenuOpen(false); }}
+            style={{ padding: '1rem', background: controlMode === 'Keyboard' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'Keyboard' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >Keyboard</button>
           
           <button 
             onClick={() => { setControlMode('VOICE'); setIsMenuOpen(false); }}
             style={{ padding: '1rem', background: controlMode === 'VOICE' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'VOICE' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          ><Mic size={16} /> Voice Control</button>
+          >Voice Control</button>
           
           <button 
             onClick={() => { setControlMode('PIN'); setIsMenuOpen(false); }}
             style={{ padding: '1rem', background: controlMode === 'PIN' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'PIN' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          ><Target size={16} /> Auto / PIN</button>
+          >Auto / PIN</button>
         </div>
       )}
 
@@ -233,16 +233,16 @@ export const CommandCenter: React.FC = () => {
         {/* MOUSE MODE */}
         {controlMode === 'MOUSE' && (
           <div style={{ textAlign: 'center', padding: '2rem 0', color: '#555' }}>
-            <Mouse size={48} color="#0066cc" style={{ marginBottom: '1rem' }} />
+
             <p style={{ margin: 0, fontWeight: 'bold' }}>Mouse Control Active</p>
             <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Drag anywhere on the 3D canvas to translate X/Y.<br/>Use mouse wheel for Z elevation.</p>
           </div>
         )}
 
-        {/* WASD MODE */}
-        {controlMode === 'WASD' && (
+        {/* Keyboard MODE */}
+        {controlMode === 'Keyboard' && (
           <div style={{ textAlign: 'center', padding: '2rem 0', color: '#555' }}>
-            <Keyboard size={48} color="#0066cc" style={{ marginBottom: '1rem' }} />
+
             <p style={{ margin: 0, fontWeight: 'bold' }}>Keyboard Control Active</p>
             <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Use <b>W A S D</b> for X/Y translation.<br/>Use <b>Space</b> / <b>Shift</b> for Z elevation.</p>
           </div>
@@ -252,7 +252,7 @@ export const CommandCenter: React.FC = () => {
         {controlMode === 'PIN' && (
           <>
             <div>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Navigation2 size={16}/> Absolute Target (IK)</h3>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Absolute Target (IK)</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={{ fontSize: '0.7rem', color: '#555' }}>X (m)</label>
@@ -284,7 +284,7 @@ export const CommandCenter: React.FC = () => {
                   style={{ flex: 1, padding: '0.75rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '4px', fontSize: '1.2rem', letterSpacing: '4px', textAlign: 'center' }}
                 />
                 <button onClick={runPINSequence} disabled={pin.length !== 6} style={{ padding: '0 1rem', background: '#9933ff', border: 'none', color: '#fff', borderRadius: '4px' }}>
-                  <Play size={20} />
+                  EXECUTE
                 </button>
               </div>
             </div>
@@ -306,7 +306,7 @@ export const CommandCenter: React.FC = () => {
                 transition: 'all 0.3s'
               }}
             >
-              {isListening ? <Mic size={40} /> : <MicOff size={40} />}
+
               <span style={{ fontWeight: 'bold' }}>{isListening ? 'LISTENING' : 'TAP TO SPEAK'}</span>
             </button>
             

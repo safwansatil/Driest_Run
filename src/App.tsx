@@ -14,9 +14,9 @@ function App() {
   const { mode, isEStop, controlMode } = useStore();
 
   useEffect(() => {
-    // Keyboard controls (WASD/QE) for Cartesian jogging
+    // Keyboard controls (Keyboard/QE) for Cartesian jogging
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isEStop || mode === 'ERROR' || mode === 'EXECUTE' || controlMode !== 'WASD') return;
+      if (isEStop || mode === 'ERROR' || mode === 'EXECUTE' || controlMode !== 'Keyboard') return;
       
       if (['w','a','s','d','q','e',' ',"shift"].includes(e.key.toLowerCase())) {
         let dx = 0, dy = 0, dz = 0;

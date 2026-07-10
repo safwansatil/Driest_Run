@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store';
 import { getEndEffectorPose } from '../kinematics';
-import { Activity, Target, ChevronDown, ChevronRight } from 'lucide-react';
+
 import type { CartesianPose } from '../kinematics';
 
 import AuditLog from './AuditLog';
@@ -25,14 +25,14 @@ export const TelemetryDashboard: React.FC = () => {
       
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '0.5rem' }}>
-        <Activity size={20} color="#0066cc" />
+
         <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#111' }}>Live Telemetry</h2>
       </div>
 
       {/* Cartesian Pose */}
       <div>
         <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#0066cc', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Target size={16} /> End Effector Position (m)
+          End Effector Position (m)
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
           <div className="telemetry-box">
@@ -56,7 +56,7 @@ export const TelemetryDashboard: React.FC = () => {
           onClick={() => setIsJointsExpanded(!isJointsExpanded)}
           style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#f59e0b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
-          {isJointsExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          {isJointsExpanded ? '▼ ' : '▶ '}
           Joint Angles (rad)
         </h3>
         

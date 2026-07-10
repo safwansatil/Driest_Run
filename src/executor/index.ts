@@ -19,7 +19,7 @@ export function execute(validatedJointAngles: JointState): void {
   const startTime = performance.now();
 
   function animate(time: number) {
-    if (fsm.getState() === 'ESTOPPED' || fsm.getState() === 'FAULT') {
+    if (fsm.getState() === 'STOP' || fsm.getState() === 'ERROR') {
       currentAnimation = null;
       return; // Stop moving immediately on E-Stop
     }
@@ -31,7 +31,7 @@ export function execute(validatedJointAngles: JointState): void {
     const easeT = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; 
 
     const newJoints = { ...startJoints };
-    let keys: (keyof JointState)[] = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6', 'stylus_pitch'];
+    let keys: (keyof JointState)[] = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6'];
     
     for (const key of keys) {
       if (validatedJointAngles[key] !== undefined) {
@@ -45,9 +45,9 @@ export function execute(validatedJointAngles: JointState): void {
       currentAnimation = requestAnimationFrame(animate);
     } else {
       currentAnimation = null;
-      // Movement complete, transition back to IDLE
-      if (fsm.getState() === 'EXECUTING' || fsm.getState() === 'JOGGING') {
-         fsm.transitionTo('IDLE');
+      // Movement complete, transition back to REST
+      if (fsm.getState() === 'EXECUTE' || fsm.getState() === 'JOGGING') {
+         fsm.transitionTo('REST');
       }
     }
   }

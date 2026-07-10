@@ -43,7 +43,7 @@ Implement inverse kinematics: given a target (x, y, z) for the stylus tip, compu
 
 Build an on-screen joystick-style control that lets the operator jog the end-effector in real time.
 
-Add keyboard controls (e.g. arrow keys / WASD + modifiers) as an alternative way to jog the same motion.
+Add keyboard controls (e.g. arrow keys / Keyboard + modifiers) as an alternative way to jog the same motion.
 
 Phase 3 - Talk to the Arm
 

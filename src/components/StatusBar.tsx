@@ -1,6 +1,6 @@
 import React from 'react';
 import { useStore } from '../store';
-import { AlertTriangle, ShieldCheck, Activity, Wifi } from 'lucide-react';
+
 
 const StatusBar: React.FC = () => {
   const mode = useStore((state) => state.mode);
@@ -38,7 +38,7 @@ const StatusBar: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, letterSpacing: '2px', color: '#111' }}>VANTAGE</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#555' }}>
-          <Wifi size={14} color="#00ffcc" /> WS: CONNECTED
+          WS: CONNECTED
         </div>
       </div>
 
@@ -52,7 +52,7 @@ const StatusBar: React.FC = () => {
           boxShadow: `0 0 10px ${getStatusColor()}20`,
           display: 'flex', alignItems: 'center', gap: '8px'
         }}>
-          {mode === 'ERROR' || mode === 'STOP' ? <AlertTriangle size={16} /> : <Activity size={16} />}
+
           {mode}
         </div>
         
@@ -108,7 +108,7 @@ const StatusBar: React.FC = () => {
             transition: 'all 0.2s'
           }}
         >
-          <ShieldCheck size={20} />
+
           {mode === 'STOP' ? 'RESET STOP' : 'E-STOP'}
         </button>
       </div>

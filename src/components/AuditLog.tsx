@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Terminal, CheckCircle2, XCircle } from 'lucide-react';
+
 import { auditLog } from '../audit';
 import type { AuditEntry } from '../audit';
 
@@ -10,7 +10,7 @@ export const AuditLog: React.FC = () => {
   // Quick hack to poll for new logs since we don't have an event emitter in the stub
   useEffect(() => {
     const interval = setInterval(() => {
-      setLogs(auditLog.getLog());
+      setLogs(auditLog.getLog().slice(-3));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -24,7 +24,7 @@ export const AuditLog: React.FC = () => {
   return (
     <div className="glass-panel" style={{ width: '100%', display: 'flex', flexDirection: 'column', padding: '1rem', zIndex: 10, boxSizing: 'border-box' }}>
       <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#111' }}>
-        <Terminal size={20} /> Session Log
+        Session Log
       </h2>
       
       <div 
@@ -45,13 +45,10 @@ export const AuditLog: React.FC = () => {
       >
         {[...logs].map(log => {
           let color = '#333';
-          let Icon = null;
           if (log.verdict === 'REJECTED') {
              color = '#cc0000';
-             Icon = XCircle;
           } else if (log.verdict === 'ACCEPTED') {
              color = '#008800';
-             Icon = CheckCircle2;
           }
 
           const time = new Date(log.timestamp).toISOString().split('T')[1].slice(0, -1);
@@ -62,7 +59,6 @@ export const AuditLog: React.FC = () => {
                 <span style={{ color: '#888', minWidth: '85px' }}>[{time}]</span>
                 <span style={{ color: '#555', minWidth: '70px', fontWeight: 'bold' }}>[{log.command.source}]</span>
                 <span style={{ color, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  {Icon && <Icon size={12}/>}
                   {log.command.type} - {log.verdict}
                 </span>
               </div>
