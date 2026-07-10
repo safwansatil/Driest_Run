@@ -10,49 +10,70 @@ const RobotArm = () => {
   const joints = useStore((state) => state.joints);
   const setUrdfLimits = useStore((state) => state.setUrdfLimits);
   const [robot, setRobot] = useState<any>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    const loader = new URDFLoader();
-    loader.load('/6_dof_arm.urdf', (urdf) => {
-      urdf.traverse((child: any) => {
-        if (child.isMesh) {
-          child.material = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.2, metalness: 0.6 });
-          child.castShadow = true;
-          child.receiveShadow = true;
+    try {
+      const loader = new URDFLoader();
+      loader.load('/6_dof_arm.urdf', (urdf) => {
+        try {
+          urdf.traverse((child: any) => {
+            if (child.isMesh) {
+              child.material = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.2, metalness: 0.6 });
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
+          // Ensure the root base is correctly oriented
+          urdf.rotation.x = -Math.PI / 2;
+          
+          // Parse limits for Layer 2 Safety Gate
+          const limits: UrdfLimits = {};
+          for (const jointName in urdf.joints) {
+             const joint = urdf.joints[jointName];
+             if (joint.limit) {
+                limits[jointName] = { 
+                  min: joint.limit.lower, 
+                  max: joint.limit.upper, 
+                  effort: joint.limit.effort, 
+                  velocity: joint.limit.velocity 
+                };
+             }
+          }
+          setUrdfLimits(limits);
+          setRobot(urdf);
+        } catch (err: any) {
+           setErrorMsg('URDF parsing callback error: ' + err.message);
         }
+      }, undefined, (err: any) => {
+         setErrorMsg('URDF load error: ' + (err.message || 'unknown error'));
       });
-      // Ensure the root base is correctly oriented
-      urdf.rotation.x = -Math.PI / 2;
-      
-      // Parse limits for Layer 2 Safety Gate
-      const limits: UrdfLimits = {};
-      for (const jointName in urdf.joints) {
-         const joint = urdf.joints[jointName];
-         if (joint.limit) {
-            limits[jointName] = { 
-              min: joint.limit.lower, 
-              max: joint.limit.upper, 
-              effort: joint.limit.effort, 
-              velocity: joint.limit.velocity 
-            };
-         }
-      }
-      setUrdfLimits(limits);
-      setRobot(urdf);
-    });
+    } catch (e: any) {
+      setErrorMsg('URDFLoader init error: ' + e.message);
+    }
   }, [setUrdfLimits]);
 
   useFrame(() => {
     if (robot) {
-      if (robot.joints['joint_1']) robot.joints['joint_1'].setAngle(joints.joint_1);
-      if (robot.joints['joint_2']) robot.joints['joint_2'].setAngle(joints.joint_2);
-      if (robot.joints['joint_3']) robot.joints['joint_3'].setAngle(joints.joint_3);
-      if (robot.joints['joint_4']) robot.joints['joint_4'].setAngle(joints.joint_4);
-      if (robot.joints['joint_5']) robot.joints['joint_5'].setAngle(joints.joint_5);
-      if (robot.joints['joint_6']) robot.joints['joint_6'].setAngle(joints.joint_6);
-      if (robot.joints['stylus_pitch']) robot.joints['stylus_pitch'].setAngle(joints.stylus_pitch);
+      if (robot.joints['joint_1']) robot.joints['joint_1'].setJointValue(joints.joint_1);
+      if (robot.joints['joint_2']) robot.joints['joint_2'].setJointValue(joints.joint_2);
+      if (robot.joints['joint_3']) robot.joints['joint_3'].setJointValue(joints.joint_3);
+      if (robot.joints['joint_4']) robot.joints['joint_4'].setJointValue(joints.joint_4);
+      if (robot.joints['joint_5']) robot.joints['joint_5'].setJointValue(joints.joint_5);
+      if (robot.joints['joint_6']) robot.joints['joint_6'].setJointValue(joints.joint_6);
+      if (robot.joints['stylus_pitch']) robot.joints['stylus_pitch'].setJointValue(joints.stylus_pitch);
     }
   });
+
+  if (errorMsg) {
+     return (
+       <Html center>
+         <div style={{ color: 'red', background: 'rgba(0,0,0,0.8)', padding: '10px' }}>
+           {errorMsg}
+         </div>
+       </Html>
+     );
+  }
 
   return robot ? <primitive object={robot} /> : null;
 };
