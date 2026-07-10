@@ -18,7 +18,7 @@ import { initMouseTrigger } from './triggers/mouse';
 import './index.css';
 
 function App() {
-  const { mode, isEStop, controlMode, cameraMode } = useStore();
+  const { controlMode, cameraMode } = useStore();
   const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   // Initialize Keyboard Trigger

@@ -120,7 +120,7 @@ class CommandBus {
           ikError
         });
         useStore.getState().setError(`Command Rejected: Target unreachable / IK Failed`);
-        return;
+        return 'REJECTED';
       }
     } else if (command.type === 'jog' && command.delta) {
       const currentJoints = useStore.getState().joints;
