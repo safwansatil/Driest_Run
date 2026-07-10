@@ -1,10 +1,10 @@
 import { commandBus } from '../bus/commandBus';
 import { parseUtterance, isParseError } from './voice/grammar';
 
-export function handleVoiceCommand(spokenText: string): void {
+export async function handleVoiceCommand(spokenText: string): Promise<void> {
   const result = parseUtterance(spokenText);
   if (isParseError(result)) {
     return;
   }
-  commandBus.submit(result);
+  await commandBus.submit(result);
 }

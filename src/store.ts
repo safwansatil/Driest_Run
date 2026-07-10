@@ -103,10 +103,10 @@ export const useStore = create<AppState>((set) => ({
   })),
   
   activeCommand: null,
-  setActiveCommand: (cmd) => {
+  setActiveCommand: async (cmd) => {
     set({ activeCommand: cmd });
     if (cmd) {
-      commandBus.submit(cmd);
+      await commandBus.submit(cmd);
     }
   },
 }));

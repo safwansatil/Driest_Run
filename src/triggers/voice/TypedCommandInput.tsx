@@ -13,7 +13,7 @@ const TypedCommandInput = () => {
   const [text, setText] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
@@ -21,7 +21,7 @@ const TypedCommandInput = () => {
 
     if (isParseError(result)) {
       setHistory((prev) => [
-        { verdict: 'rejected', reason: result.reason, raw: result.raw || trimmed },
+        { verdict: 'rejected' as const, reason: result.reason, raw: result.raw },
         ...prev,
       ].slice(0, 3));
       setText('');
@@ -29,10 +29,10 @@ const TypedCommandInput = () => {
     }
 
     const typedCmd = { ...result, source: 'typed' as const };
-    commandBus.submit(typedCmd as any);
+    const verdict = await commandBus.dispatch(typedCmd);
 
     setHistory((prev) => [
-      { verdict: 'accepted', type: result.type, raw: trimmed },
+      { verdict: verdict as 'accepted' | 'rejected', type: result.type, raw: trimmed },
       ...prev,
 
     ].slice(0, 3));
