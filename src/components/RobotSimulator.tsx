@@ -3,10 +3,12 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid, Html } from '@react-three/drei';
 import URDFLoader from 'urdf-loader';
 import { useStore } from '../store';
+import type { UrdfLimits } from '../types';
 import * as THREE from 'three';
 
 const RobotArm = () => {
   const joints = useStore((state) => state.joints);
+  const setUrdfLimits = useStore((state) => state.setUrdfLimits);
   const [robot, setRobot] = useState<any>(null);
 
   useEffect(() => {
@@ -21,9 +23,24 @@ const RobotArm = () => {
       });
       // Ensure the root base is correctly oriented
       urdf.rotation.x = -Math.PI / 2;
+      
+      // Parse limits for Layer 2 Safety Gate
+      const limits: UrdfLimits = {};
+      for (const jointName in urdf.joints) {
+         const joint = urdf.joints[jointName];
+         if (joint.limit) {
+            limits[jointName] = { 
+              min: joint.limit.lower, 
+              max: joint.limit.upper, 
+              effort: joint.limit.effort, 
+              velocity: joint.limit.velocity 
+            };
+         }
+      }
+      setUrdfLimits(limits);
       setRobot(urdf);
     });
-  }, []);
+  }, [setUrdfLimits]);
 
   useFrame(() => {
     if (robot) {
@@ -55,10 +72,9 @@ const KeyPanel = () => {
       .catch(console.error);
   }, []);
 
-  // Panel base center
   const cx = 0.55;
   const cy = 0;
-  const cz = 0.045; // Just below keys
+  const cz = 0.045;
 
   return (
     <group rotation={[-Math.PI/2, 0, 0]}>

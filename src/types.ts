@@ -8,52 +8,50 @@ export interface JointState {
   stylus_pitch: number;
 }
 
-export type CommandSource = 'dashboard' | 'joystick' | 'keyboard' | 'voice' | 'auto_pin' | 'agentic_llm';
-
-export interface CartesianPose {
-  x: number;
-  y: number;
-  z: number;
-  nx: number; // Normal vector X (pointing direction)
-  ny: number; // Normal vector Y
-  nz: number; // Normal vector Z
+export interface UrdfLimits {
+  [jointName: string]: { min: number; max: number; effort?: number; velocity?: number };
 }
 
-export interface MotionCommand {
-  id: string;
-  timestamp: number;
+export type CommandSource = "dashboard" | "joystick" | "keyboard" | "voice" | "agentic" | "autonomous";
+
+export type ArmCommand = {
+  id: string;                // uuid
   source: CommandSource;
-  type: 'joint' | 'cartesian' | 'jog';
-  // Target angles (used if type === 'joint')
-  jointTargets?: Partial<JointState>;
-  // Cartesian target (used if type === 'cartesian')
-  cartesianTarget?: Partial<CartesianPose>;
-  // Jog offsets (used if type === 'jog')
-  jogDelta?: {
-    dx?: number;
-    dy?: number;
-    dz?: number;
-  };
-  // Trajectory velocity scale (0.1 to 1.0)
-  speedFraction?: number;
-}
+  type: "moveTo" | "jog" | "setJoint";
+  target?: { x: number; y: number; z: number; approach?: [number, number, number] };
+  delta?: { x: number; y: number; z: number };
+  joint?: { name: string; value: number }; // only for type "setJoint"
+  timestamp: number;
+};
+
+export type SafetyRejectReason = 
+  | 'OUT_OF_BOUNDS'
+  | 'JOINT_LIMIT_VIOLATION'
+  | 'Z_COLLISION'
+  | 'SELF_COLLISION'
+  | 'VELOCITY_CLAMP_VIOLATION'
+  | 'UNREACHABLE_TARGET';
 
 export interface SafetyReport {
   safe: boolean;
-  violations: string[];
-  selfCollision: boolean;
-  groundCollision: boolean;
-  jointLimitViolations: string[];
-  workspaceViolation: boolean;
+  reasons: SafetyRejectReason[];
+  details: string[]; // Machine readable details for the agentic layer
 }
 
-export type ArmMode = 'IDLE' | 'MOVING' | 'TAP_DESCENDING' | 'TAP_ASCENDING' | 'ESTOP_TRIGGERED' | 'SAFETY_FAULT';
+export type ArmMode = "IDLE" | "JOGGING" | "EXECUTING" | "ESTOPPED";
 
 export interface LogEntry {
   id: string;
   timestamp: number;
-  source: string;
+  source: CommandSource | "SYSTEM";
   type: 'info' | 'warn' | 'error' | 'success';
   message: string;
-  data?: any;
+  commandId?: string;
+  
+  // Structured Session Log fields (Layer 6)
+  verdict?: "ACCEPTED" | "REJECTED";
+  rejectReason?: SafetyRejectReason;
+  ikError?: number;
+  finalTipError?: number;
+  target?: any;
 }

@@ -39,8 +39,7 @@ function App() {
             timestamp: Date.now(),
             source: 'keyboard',
             type: 'jog',
-            jogDelta: { dx, dy, dz },
-            speedFraction: 0.3
+            delta: { x: dx, y: dy, z: dz }
           });
         }
       }

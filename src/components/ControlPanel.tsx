@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { JOINT_LIMITS } from '../kinematics/ikSolver';
 import { Play, Mic, MicOff, AlertOctagon, RefreshCw, Hand, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, MousePointerClick } from 'lucide-react';
 
 export default function ControlPanel() {
-  const { joints, setJoints, mode, isEStop, triggerEStop, resetEStop, setActiveCommand, addLog } = useStore();
+  const { joints, urdfLimits, mode, isEStop, triggerEStop, resetEStop, setActiveCommand, addLog } = useStore();
   const [pin, setPin] = useState('');
   const [isListening, setIsListening] = useState(false);
 
@@ -12,35 +11,28 @@ export default function ControlPanel() {
   const runSequence = async () => {
     if (isEStop) return;
     if (pin.length !== 6) {
-      addLog({ type: 'warn', source: 'Sequencer', message: 'PIN must be 6 digits' });
+      addLog({ source: 'SYSTEM', type: 'warn', message: 'PIN must be 6 digits' });
       return;
     }
 
-    addLog({ type: 'info', source: 'Sequencer', message: `Running sequence: ${pin}` });
+    addLog({ source: 'SYSTEM', type: 'info', message: `Running sequence: ${pin}` });
     
-    // Fetch key coords
+    // For MVP, just queue the first digit. A full sequence would use a generator or state machine.
     const resp = await fetch('/key.config.json');
     const config = await resp.json();
     const keys = config.keys;
 
-    // A very simple sequence loop (in a real app, this would be a state machine or async generator hooked into the executor)
-    // For MVP, we'll queue them as activeCommands by waiting for IDLE state between commands, but since we are running 
-    // inside a simple React component, let's just trigger the first one to prove the pipeline.
-    // In a full implementation, we'd add an array of commands to the store and executor drains it.
-    
-    // Simple implementation: Just move to the first digit for MVP demonstration
     const firstDigit = pin[0];
     const keyData = keys[firstDigit];
     if (keyData) {
       setActiveCommand({
         id: crypto.randomUUID(),
         timestamp: Date.now(),
-        source: 'auto_pin',
-        type: 'cartesian',
-        cartesianTarget: { x: keyData.x, y: keyData.y, z: keyData.z + 0.01, nx: 0, ny: 0, nz: -1 },
-        speedFraction: 0.5
+        source: 'autonomous',
+        type: 'moveTo',
+        target: { x: keyData.x, y: keyData.y, z: keyData.z + 0.01, approach: [0, 0, -1] }
       });
-      addLog({ type: 'info', source: 'Sequencer', message: `Moving to key ${firstDigit}` });
+      addLog({ source: 'SYSTEM', type: 'info', message: `Moving to key ${firstDigit}` });
     }
   };
 
@@ -57,27 +49,26 @@ export default function ControlPanel() {
     recognition.onend = () => setIsListening(false);
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript.toLowerCase();
-      addLog({ type: 'info', source: 'Voice', message: `Heard: "${transcript}"` });
+      addLog({ source: 'SYSTEM', type: 'info', message: `Heard: "${transcript}"` });
       
-      let jogDelta = { dx: 0, dy: 0, dz: 0 };
-      if (transcript.includes('up')) jogDelta.dz = 0.05;
-      if (transcript.includes('down')) jogDelta.dz = -0.05;
-      if (transcript.includes('left')) jogDelta.dy = 0.05;
-      if (transcript.includes('right')) jogDelta.dy = -0.05;
-      if (transcript.includes('forward')) jogDelta.dx = 0.05;
-      if (transcript.includes('back')) jogDelta.dx = -0.05;
+      let delta = { x: 0, y: 0, z: 0 };
+      if (transcript.includes('up')) delta.z = 0.05;
+      if (transcript.includes('down')) delta.z = -0.05;
+      if (transcript.includes('left')) delta.y = 0.05;
+      if (transcript.includes('right')) delta.y = -0.05;
+      if (transcript.includes('forward')) delta.x = 0.05;
+      if (transcript.includes('back')) delta.x = -0.05;
 
-      if (jogDelta.dx !== 0 || jogDelta.dy !== 0 || jogDelta.dz !== 0) {
+      if (delta.x !== 0 || delta.y !== 0 || delta.z !== 0) {
         setActiveCommand({
           id: crypto.randomUUID(),
           timestamp: Date.now(),
           source: 'voice',
           type: 'jog',
-          jogDelta,
-          speedFraction: 0.3
+          delta
         });
       } else {
-         addLog({ type: 'warn', source: 'Voice', message: 'Command not recognized' });
+         addLog({ source: 'SYSTEM', type: 'warn', message: 'Command not recognized' });
       }
     };
 
@@ -94,8 +85,17 @@ export default function ControlPanel() {
       timestamp: Date.now(),
       source: 'joystick',
       type: 'jog',
-      jogDelta: { dx, dy, dz },
-      speedFraction: 0.4
+      delta: { x: dx, y: dy, z: dz }
+    });
+  };
+  
+  const setJoint = (name: string, value: number) => {
+    setActiveCommand({
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      source: 'dashboard',
+      type: 'setJoint',
+      joint: { name, value }
     });
   };
 
@@ -103,7 +103,7 @@ export default function ControlPanel() {
     <div className="glass-panel" style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', zIndex: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h2 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <RefreshCw size={20} className={mode === 'MOVING' ? 'spin' : ''} /> Control Panel
+          <RefreshCw size={20} className={mode === 'EXECUTING' || mode === 'JOGGING' ? 'spin' : ''} /> Control Panel
         </h2>
         <div style={{ padding: '4px 8px', borderRadius: '4px', background: isEStop ? 'red' : (mode === 'IDLE' ? 'green' : 'orange'), fontSize: '0.8rem', fontWeight: 'bold' }}>
           {isEStop ? 'E-STOP' : mode}
@@ -120,25 +120,26 @@ export default function ControlPanel() {
       {/* Manual Joint Sliders */}
       <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '8px' }}>
         <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#aaa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Hand size={14}/> Joint Control</h3>
-        {Object.keys(JOINT_LIMITS).map((k) => {
-          const key = k as keyof typeof JOINT_LIMITS;
+        {Object.keys(urdfLimits).map((key) => {
+          const limit = urdfLimits[key];
           return (
             <div key={key} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '4px', fontSize: '0.8rem' }}>
               <span style={{ width: '70px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{key}</span>
               <input 
                 type="range" 
-                min={JOINT_LIMITS[key].min} 
-                max={JOINT_LIMITS[key].max} 
+                min={limit.min} 
+                max={limit.max} 
                 step={0.01} 
-                value={joints[key]}
-                onChange={(e) => setJoints({ [key]: parseFloat(e.target.value) })}
+                value={joints[key as keyof typeof joints] || 0}
+                onChange={(e) => setJoint(key, parseFloat(e.target.value))}
                 disabled={isEStop}
                 style={{ flex: 1 }}
               />
-              <span style={{ width: '40px', textAlign: 'right' }}>{joints[key].toFixed(2)}</span>
+              <span style={{ width: '40px', textAlign: 'right' }}>{(joints[key as keyof typeof joints] || 0).toFixed(2)}</span>
             </div>
           );
         })}
+        {Object.keys(urdfLimits).length === 0 && <div style={{fontSize:'0.8rem', color:'#666'}}>Loading URDF limits...</div>}
       </div>
 
       {/* Cartesian Joystick */}

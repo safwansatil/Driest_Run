@@ -1,44 +1,55 @@
 import { create } from 'zustand';
-import type { JointState, ArmMode, LogEntry, MotionCommand } from './types';
-import { HOME_JOINTS } from './kinematics/ikSolver';
+import type { JointState, ArmMode, LogEntry, ArmCommand, UrdfLimits } from './types';
+
+// Hardcoded fallback HOME_JOINTS if URDF hasn't loaded
+export const HOME_JOINTS: JointState = {
+  joint_1: 0,
+  joint_2: 0,
+  joint_3: 0,
+  joint_4: 0,
+  joint_5: 0,
+  joint_6: 0,
+  stylus_pitch: 0,
+};
 
 interface AppState {
-  // Current real state of the arm
   joints: JointState;
   setJoints: (joints: Partial<JointState>) => void;
   
-  // Application mode
+  urdfLimits: UrdfLimits;
+  setUrdfLimits: (limits: UrdfLimits) => void;
+
   mode: ArmMode;
   setMode: (mode: ArmMode) => void;
   
-  // E-Stop
   isEStop: boolean;
   triggerEStop: () => void;
   resetEStop: () => void;
 
-  // Logs
   logs: LogEntry[];
   addLog: (log: Omit<LogEntry, 'id' | 'timestamp'>) => void;
   
-  // Active Command
-  activeCommand: MotionCommand | null;
-  setActiveCommand: (cmd: MotionCommand | null) => void;
+  activeCommand: ArmCommand | null;
+  setActiveCommand: (cmd: ArmCommand | null) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
   joints: HOME_JOINTS,
   setJoints: (jointsUpdate) => set((state) => ({ joints: { ...state.joints, ...jointsUpdate } })),
   
+  urdfLimits: {},
+  setUrdfLimits: (urdfLimits) => set({ urdfLimits }),
+
   mode: 'IDLE',
   setMode: (mode) => set({ mode }),
   
   isEStop: false,
-  triggerEStop: () => set({ isEStop: true, mode: 'ESTOP_TRIGGERED', activeCommand: null }),
+  triggerEStop: () => set({ isEStop: true, mode: 'ESTOPPED', activeCommand: null }),
   resetEStop: () => set({ isEStop: false, mode: 'IDLE' }),
   
   logs: [],
   addLog: (logInfo) => set((state) => ({
-    logs: [{ id: crypto.randomUUID(), timestamp: Date.now(), ...logInfo }, ...state.logs].slice(0, 100) // Keep last 100 logs
+    logs: [{ id: crypto.randomUUID(), timestamp: Date.now(), ...logInfo }, ...state.logs].slice(0, 100)
   })),
   
   activeCommand: null,
