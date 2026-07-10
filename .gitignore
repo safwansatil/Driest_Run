@@ -27,5 +27,6 @@ prompts.md
 *.sw?
 
 
-.env
+*.env
 .vercel
+.env

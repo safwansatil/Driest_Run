@@ -30,18 +30,18 @@ const JoystickControls = () => {
       
       <div style={{ display: 'flex', gap: '2rem', width: '100%', justifyContent: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-          <div ref={leftRef} style={{ width: '100px', height: '100px', position: 'relative' }} />
+          <div ref={leftRef} style={{ width: '100px', height: '100px', position: 'relative', background: 'rgba(255,255,255,0.08)', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)' }} />
           <span style={{ fontSize: '0.7rem', color: '#555' }}>Toggle Joint (Y)</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-          <div ref={rightRef} style={{ width: '100px', height: '100px', position: 'relative' }} />
+          <div ref={rightRef} style={{ width: '100px', height: '100px', position: 'relative', background: 'rgba(255,255,255,0.08)', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)' }} />
           <span style={{ fontSize: '0.7rem', color: '#555' }}>Rotate Servo (X)</span>
         </div>
       </div>
 
       <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-          <div ref={speedRef} style={{ width: '100px', height: '100px', position: 'relative' }} />
+          <div ref={speedRef} style={{ width: '100px', height: '100px', position: 'relative', background: 'rgba(255,255,255,0.08)', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)' }} />
           <span style={{ fontSize: '0.7rem', color: '#555' }}>Speed Control (Y)</span>
         </div>
       </div>
