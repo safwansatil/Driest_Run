@@ -4,8 +4,6 @@ import { getEndEffectorPose } from '../kinematics';
 
 import type { CartesianPose } from '../kinematics';
 
-import AuditLog from './AuditLog';
-
 export const TelemetryDashboard: React.FC = () => {
   const joints = useStore((state) => state.joints);
   const urdfLimits = useStore((state) => state.urdfLimits);
@@ -21,10 +19,10 @@ export const TelemetryDashboard: React.FC = () => {
   }, []);
 
   return (
-    <div className="glass-panel" style={{ width: '100%', height: '100%', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', zIndex: 10, boxSizing: 'border-box' }}>
+    <div className="glass-panel" style={{ width: '100%', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10, boxSizing: 'border-box' }}>
       
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '0.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '0.25rem' }}>
 
         <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#111' }}>Live Telemetry</h2>
       </div>
@@ -95,12 +93,7 @@ export const TelemetryDashboard: React.FC = () => {
         )}
       </div>
 
-      <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)', margin: '0' }} />
-      
-      {/* Audit Log Terminal */}
-      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <AuditLog />
-      </div>
+
 
     </div>
   );

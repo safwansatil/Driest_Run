@@ -5,7 +5,7 @@
 Browser-based digital twin of Vantage's `stylus_arm` (7 actuated revolute
 joints: `joint_1..joint_6` + `stylus_pitch`, i.e. 6-DOF arm + 1 redundant
 wrist DOF). One motion pipeline, five trigger surfaces (dashboard read-out,
-GUI joystick, keyboard, deterministic voice, autonomous PIN entry), plus an
+GUI joystick, keyboard, deterministic voice, Autonomous Movement), plus an
 optional agentic voice extension. No physical hardware — everything must be
 provable and trustworthy in simulation before it's allowed near a real arm.
 
@@ -74,14 +74,14 @@ project — every subsequent phase is just "a new producer of this type."
 | M5 | Executor: min-jerk trajectory interpolation, drives joints per tick, live dashboard reflects it | IK + Visualization | Smooth motion, no visible joint teleporting, 60fps target |
 | M6 | Joystick GUI + keyboard jog, both emitting `jog` commands only | Manual Control (10%) | Both feel responsive (<100ms perceived latency), both go through the same gate/executor path |
 | M7 | Deterministic voice control (keyword → command map) | Voice Control (15%) | "move up," "move left," "rotate base 30 degrees" reliably map to correct `jog`/`setJoint` commands |
-| M8 | Autonomous PIN entry: per digit → hover above key → descend → confirm within ±5mm tolerance → retract → next digit | Autonomous PIN Entry (20%) — highest single weight, prioritize accordingly | 6-digit PIN completes unattended, session log shows per-key success/fail |
+| M8 | Autonomous Movement: per digit → hover above key → descend → confirm within ±5mm tolerance → retract → next digit | Autonomous Movement (20%) — highest single weight, prioritize accordingly | 6-digit PIN completes unattended, session log shows per-key success/fail |
 | M9 | Session log / audit report generator (pass/fail summary for judges) | Architecture & Presentation | One-click exportable report: source, target, verdict, IK error, final tip error, per command |
 | M10 | Electrical schematic (PoC): power stage, MCU, servo driver, Wi-Fi link, pin-mapping table | Electrical Schematic (5%) | Logically consistent, labeled, buildable from the diagram alone |
 | M11 (bonus) | Agentic voice layer: NL → same Layer 0 schema, gated identically, spoken/text confirmation + failure explanation | Agentic Bonus (+10%) | Never bypasses Layer 2; ambiguous input triggers a clarifying question instead of a guess |
 | M12 | Polish pass: UI/UX consistency, code cleanup, demo script, README | Polish & Presentation (5%) | Demo runs start-to-finish without manual intervention |
 
 Suggested ordering priority if time runs short: **M0→M3→M4→M5→M8** first
-(these cover Visualization + IK + Autonomous PIN Entry = 50% of the
+(these cover Visualization + IK + Autonomous Movement = 50% of the
 rubric), then M6/M7 (manual + voice = 25%), then M9/M10/M12, then M11 last
 since it's bonus-only and explicitly optional.
 

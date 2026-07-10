@@ -3,9 +3,6 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import RobotSimulator from './components/RobotSimulator';
 import CommandCenter from './components/CommandCenter';
-import ControlPanel from './components/ControlPanel';
-import VoicePanel from './triggers/voice/VoicePanel';
-import { TypedCommandInput } from './triggers/voice/TypedCommandInput';
 import AuditLog from './components/AuditLog';
 import TelemetryDashboard from './components/TelemetryDashboard';
 import StatusBar from './components/StatusBar';
@@ -87,11 +84,8 @@ function App() {
 
           {/* Left Sidebar Stack */}
           <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%', width: '380px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-            <h1 style={{ margin: 0, fontSize: '1.8rem', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>Vantage Control Suite</h1>
             <CommandCenter />
-            <ControlPanel />
-            <VoicePanel />
-            <TypedCommandInput />
+
             <TelemetryDashboard />
             <div style={{ flex: 1, minHeight: 0 }}>
               <AuditLog />
