@@ -3,6 +3,12 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import RobotSimulator from './components/RobotSimulator';
 import CommandCenter from './components/CommandCenter';
+<<<<<<< HEAD
+=======
+import ControlPanel from './components/ControlPanel';
+import VoicePanel from './triggers/voice/VoicePanel';
+import TypedCommandInput from './triggers/voice/TypedCommandInput';
+>>>>>>> 705dc6ca0440e41e6b0557e9582601daa775e537
 import AuditLog from './components/AuditLog';
 import TelemetryDashboard from './components/TelemetryDashboard';
 import StatusBar from './components/StatusBar';
