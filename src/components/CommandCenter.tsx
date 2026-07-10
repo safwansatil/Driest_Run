@@ -116,7 +116,7 @@ export const CommandCenter: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   // Auto State
-  const [ikTarget, setIkTarget] = useState({ x: 0.5, y: 0, z: 0.1 });
+  const [ikTarget, setIkTarget] = useState({ x: 0.2, y: 0.2, z: 1.0 });
   const [pin, setPin] = useState('');
 
   // Voice State
@@ -169,8 +169,8 @@ export const CommandCenter: React.FC = () => {
     if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
@@ -210,15 +210,15 @@ export const CommandCenter: React.FC = () => {
       
       {/* Header with Hamburger */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-        <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#111', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#111', display: 'flex', alignItems: 'center', gap: '0.5rem', lineHeight: 1 }}>
           {controlMode === 'JOYSTICK' && <>Joystick</>}
           {controlMode === 'MOUSE' && <>Mouse Control</>}
           {controlMode === 'Keyboard' && <>Keyboard</>}
           {controlMode === 'VOICE' && <>Voice Control</>}
           {controlMode === 'PIN' && <>Auto / PIN</>}
         </h2>
-        <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '0.5rem', background: 'transparent', border: 'none', fontWeight: 'bold' }}>
-          MENU
+        <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ width: '32px', height: '32px', padding: 0, background: 'transparent', border: 'none', fontWeight: 'bold', fontSize: '1.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+          ☰
         </button>
       </div>
 
@@ -251,14 +251,38 @@ export const CommandCenter: React.FC = () => {
         </div>
       )}
 
-      <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', opacity: isDisabled ? 0.5 : 1, pointerEvents: isDisabled ? 'none' : 'auto' }}>
+      <div style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', opacity: isDisabled ? 0.5 : 1, pointerEvents: isDisabled ? 'none' : 'auto' }}>
         
         {/* JOYSTICK MODE */}
-        {controlMode === 'JOYSTICK' && <JoystickControls />}
+        {controlMode === 'JOYSTICK' && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#111' }}>Cartesian Jogging</h3>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem' }}>
+              <div style={{ flex: 1, height: '160px', background: 'rgba(255,255,255,0.8)', borderRadius: '12px', position: 'relative', border: '1px solid #ddd', boxSizing: 'border-box' }} ref={joystickRef}>
+                {/* NippleJS mounts here */}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(255,255,255,0.8)', padding: '1rem 0.5rem', borderRadius: '12px', height: '160px', border: '1px solid #ddd', boxSizing: 'border-box' }}>
+                <input 
+                  type="range" 
+                  min="-0.05" max="0.05" step="0.01" defaultValue="0"
+                  ref={zSliderRef}
+                  onMouseUp={(e) => (e.target as HTMLInputElement).value = "0"}
+                  onTouchEnd={(e) => (e.target as HTMLInputElement).value = "0"}
+                  style={{ writingMode: 'vertical-lr', direction: 'rtl', flex: 1, margin: 0, cursor: 'pointer' }} 
+                />
+              </div>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#666', textAlign: 'center' }}>Drag joystick for X/Y planar translation. Slider for Z.</div>
+          </>
+        )}
 
         {/* MOUSE MODE */}
         {controlMode === 'MOUSE' && (
-          <div style={{ textAlign: 'center', padding: '1rem 0', color: '#555' }}>
+          <div style={{ textAlign: 'center', padding: '0.5rem 0', color: '#555' }}>
+
             <p style={{ margin: 0, fontWeight: 'bold' }}>Mouse Control Active</p>
             <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>
               {!cameraMode ? 'Scroll to change joints. Left/Right click to rotate.' : 'Pan Mode active. OrbitControls enabled.'}
@@ -292,6 +316,8 @@ export const CommandCenter: React.FC = () => {
         {/* Keyboard MODE */}
         {controlMode === 'Keyboard' && (
           <div style={{ textAlign: 'center', padding: '2rem 0', color: '#555' }}>
+          <div style={{ textAlign: 'center', padding: '0.5rem 0', color: '#555' }}>
+
             <p style={{ margin: 0, fontWeight: 'bold' }}>Keyboard Control Active</p>
             <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Press <b>1-6</b> to select a joint.<br/>Press <b>A / D</b> to rotate.</p>
             
@@ -306,39 +332,67 @@ export const CommandCenter: React.FC = () => {
         {controlMode === 'PIN' && (
           <>
             <div>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Absolute Target (IK)</h3>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Absolute Target</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
                 <div>
-                  <label style={{ fontSize: '0.7rem', color: '#555' }}>X (m)</label>
-                  <input type="number" step="0.01" value={ikTarget.x} onChange={e => setIkTarget(prev => ({...prev, x: parseFloat(e.target.value)}))} style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '4px' }} />
+                  <label style={{ fontSize: '0.7rem', color: '#555' }}>X</label>
+                  <input type="number" step="0.01" value={ikTarget.x} onChange={e => setIkTarget(prev => ({...prev, x: parseFloat(e.target.value) || 0}))} style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '4px', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.7rem', color: '#555' }}>Y (m)</label>
-                  <input type="number" step="0.01" value={ikTarget.y} onChange={e => setIkTarget(prev => ({...prev, y: parseFloat(e.target.value)}))} style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '4px' }} />
+                  <label style={{ fontSize: '0.7rem', color: '#555' }}>Y</label>
+                  <input type="number" step="0.01" value={ikTarget.y} onChange={e => setIkTarget(prev => ({...prev, y: parseFloat(e.target.value) || 0}))} style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '4px', boxSizing: 'border-box' }} />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.7rem', color: '#555' }}>Z (m)</label>
-                  <input type="number" step="0.01" value={ikTarget.z} onChange={e => setIkTarget(prev => ({...prev, z: parseFloat(e.target.value)}))} style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '4px' }} />
+                  <label style={{ fontSize: '0.7rem', color: '#555' }}>Z</label>
+                  <input type="number" step="0.01" value={ikTarget.z} onChange={e => setIkTarget(prev => ({...prev, z: parseFloat(e.target.value) || 0}))} style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '4px', boxSizing: 'border-box' }} />
                 </div>
               </div>
-              <button onClick={handleIKExecute} style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,102,204,0.1)', border: '1px solid #0066cc', color: '#0066cc', borderRadius: '4px', fontWeight: 'bold' }}>EXECUTE IK TARGET</button>
+              <button onClick={handleIKExecute} style={{ width: '100%', padding: '0.85rem', background: 'linear-gradient(135deg, #0066cc, #004c99)', border: 'none', color: '#fff', borderRadius: '50px', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0, 102, 204, 0.3)', cursor: 'pointer', transition: 'transform 0.1s' }} onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'} onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}>EXECUTE IK TARGET</button>
             </div>
 
             <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)', margin: '1.5rem 0' }} />
 
             <div>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111' }}>Autonomous PIN Entry</h3>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input 
-                  type="text" 
-                  maxLength={6} 
-                  value={pin} 
-                  onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
-                  placeholder="Enter 6-digit PIN" 
-                  style={{ flex: 1, padding: '0.75rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '4px', fontSize: '1.2rem', letterSpacing: '4px', textAlign: 'center' }}
-                />
-                <button onClick={runPINSequence} disabled={pin.length !== 6} style={{ padding: '0 1rem', background: '#9933ff', border: 'none', color: '#fff', borderRadius: '4px' }}>
-                  EXECUTE
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111' }}>Autonomous Movement</h3>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                {[0, 1, 2, 3, 4, 5].map((index) => (
+                  <input 
+                    key={index}
+                    id={`pin-input-${index}`}
+                    type="text" 
+                    maxLength={1} 
+                    value={pin[index] || ''} 
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (!val && e.target.value !== '') return;
+                      const newPin = pin.split('');
+                      newPin[index] = val;
+                      setPin(newPin.join(''));
+                      if (val && index < 5) {
+                        document.getElementById(`pin-input-${index + 1}`)?.focus();
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace' && !pin[index] && index > 0) {
+                        document.getElementById(`pin-input-${index - 1}`)?.focus();
+                      }
+                    }}
+                    style={{ width: '2.2rem', height: '3rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '8px', fontSize: '1.2rem', textAlign: 'center', fontWeight: 'bold' }}
+                  />
+                ))}
+                <button 
+                  onClick={runPINSequence} 
+                  disabled={pin.length !== 6} 
+                  style={{ 
+                    marginLeft: '0.25rem', width: '3rem', height: '3rem', flexShrink: 0,
+                    background: pin.length === 6 ? 'linear-gradient(135deg, #9933ff, #7326bf)' : '#ccc', 
+                    border: 'none', color: '#fff', borderRadius: '50%', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                    fontSize: '1.2rem', boxShadow: pin.length === 6 ? '0 4px 10px rgba(153, 51, 255, 0.3)' : 'none', 
+                    cursor: pin.length === 6 ? 'pointer' : 'not-allowed'
+                  }}
+                >
+                  ▶
                 </button>
               </div>
             </div>
@@ -347,7 +401,7 @@ export const CommandCenter: React.FC = () => {
 
         {/* VOICE MODE */}
         {controlMode === 'VOICE' && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', padding: '2rem 0' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '0.5rem 0' }}>
             <button 
               onClick={() => setIsListening(!isListening)}
               style={{
@@ -361,11 +415,32 @@ export const CommandCenter: React.FC = () => {
               }}
             >
               <span style={{ fontWeight: 'bold' }}>{isListening ? 'LISTENING' : 'TAP TO SPEAK'}</span>
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '24px', justifyContent: 'center', marginTop: '0.5rem' }}>
+                {[
+                  { h: '60%', d: '0s' },
+                  { h: '100%', d: '0.1s' },
+                  { h: '70%', d: '0.2s' },
+                  { h: '90%', d: '0.3s' },
+                  { h: '50%', d: '0.4s' }
+                ].map((bar, i) => (
+                  <div 
+                    key={i} 
+                    style={{ 
+                      width: '4px', 
+                      background: isListening ? '#cc0000' : '#ccc', 
+                      height: isListening ? '20%' : '20%',
+                      borderRadius: '2px',
+                      animation: isListening ? `sound-bounce-${i} 0.5s ease-in-out infinite alternate ${bar.d}` : 'none',
+                      transition: 'background 0.3s'
+                    }} 
+                  />
+                ))}
+              </div>
             </button>
             
-            <div style={{ width: '100%', background: 'rgba(255,255,255,0.8)', padding: '1rem', borderRadius: '8px', minHeight: '80px', border: '1px solid #ddd' }}>
-              <div style={{ fontSize: '0.7rem', color: '#555', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Recognized Input</div>
-              <div style={{ color: '#111', fontStyle: voiceTranscript ? 'normal' : 'italic' }}>
+            <div style={{ width: '85%', background: 'rgba(255,255,255,0.8)', padding: '0.5rem 1rem', borderRadius: '8px', minHeight: '40px', border: '1px solid #ddd', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.65rem', color: '#555', marginBottom: '0.2rem', textTransform: 'uppercase' }}>Recognized Input</div>
+              <div style={{ color: '#111', fontStyle: voiceTranscript ? 'normal' : 'italic', fontSize: '0.9rem' }}>
                 {voiceTranscript || 'Waiting for voice command...'}
               </div>
             </div>

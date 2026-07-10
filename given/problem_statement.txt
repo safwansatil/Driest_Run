@@ -84,7 +84,7 @@ Visualization & Dashboard	URDF loads correctly; arm renders in 3D; joint states 
 Inverse Kinematics	Given a target position, the arm computes and reaches it correctly and smoothly.	15%
 Manual Control (GUI Joystick + Keyboard)	Both control modes work, feel responsive, and map intuitively to arm motion.	10%
 Voice Control	Speech commands in natural language are correctly recognized and translated into accurate arm movement.	15%
-Autonomous PIN Entry	Given a PIN, the arm sequences correctly to each key's known coordinate and "presses" it.	20%
+Autonomous Movement	Given a PIN, the arm sequences correctly to each key's known coordinate and "presses" it.	20%
 Arm's Electrical Schematic	Correctly shows power delivery, microcontroller/driver stage, and Wi-Fi link; connections labeled and logically consistent. Show a wokwi circuit diagram	5%
 Overall System Architecture & Concept Explanation	A high level system workflow with proper explanation and understanding. Need to explain rationalities to the judges	15%
 Overall Polish & Presentation	UI/UX quality, code clarity, and how well the team tells the story of their build.	5%

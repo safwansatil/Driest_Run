@@ -12,13 +12,15 @@ class CommandBus {
   public submit(command: ArmCommand): void {
     // 1. FSM Check
     if (!fsm.canAccept(command)) {
+      const reason = 'FSM_REJECTED';
       auditLog.append({
         id: crypto.randomUUID(),
         timestamp: Date.now(),
         command,
         verdict: 'REJECTED',
-        reason: 'FSM_REJECTED'
+        reason
       });
+      useStore.getState().setError(`Command Rejected: ${reason}`);
       return;
     }
 
@@ -39,6 +41,20 @@ class CommandBus {
       const ikResult = solveIK(command.target, currentJoints);
       proposedJoints = ikResult.jointAngles;
       ikError = ikResult.error;
+      
+      if (ikError > 0.8) {
+        const reason = `IK_FAILED_TO_CONVERGE (Error: ${ikError.toFixed(4)})`;
+        auditLog.append({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          command,
+          verdict: 'REJECTED',
+          reason,
+          ikError
+        });
+        useStore.getState().setError(`Command Rejected: Target unreachable / IK Failed`);
+        return;
+      }
     } else if (command.type === 'jog' && command.delta) {
       const currentPose = getEndEffectorPose(currentJoints);
       const targetPos = {
@@ -61,6 +77,20 @@ class CommandBus {
       const ikResult = solveIK(target, currentJoints);
       proposedJoints = ikResult.jointAngles;
       ikError = ikResult.error;
+
+      if (ikError > 0.8) {
+        const reason = `IK_FAILED_TO_CONVERGE (Error: ${ikError.toFixed(4)})`;
+        auditLog.append({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          command,
+          verdict: 'REJECTED',
+          reason,
+          ikError
+        });
+        useStore.getState().setError(`Command Rejected: Target unreachable / IK Failed`);
+        return;
+      }
     } else {
       // Invalid command structure
       return;
@@ -77,6 +107,7 @@ class CommandBus {
         reason: validationReport.reason,
         ikError
       });
+      useStore.getState().setError(`Validation Failed: ${validationReport.reason}`);
       return;
     }
 

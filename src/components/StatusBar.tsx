@@ -90,7 +90,7 @@ const StatusBar: React.FC = () => {
         )}
       </div>
 
-      {/* Right: Grid Toggle & E-STOP */}
+      {/* Right: Grid Toggle & Stop */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
         
         {/* Grid Toggle */}
@@ -115,22 +115,22 @@ const StatusBar: React.FC = () => {
           </div>
         </div>
 
-        {/* E-STOP */}
+        {/* Stop */}
         <button 
           onClick={mode === 'STOP' ? resetEStop : triggerEStop}
           style={{
-            height: '40px', padding: '0 2rem',
-            background: mode === 'STOP' ? '#ffcc00' : '#ff3333',
+            height: '32px', padding: '0 1.5rem',
+            background: mode === 'STOP' ? '#ffcc00' : '#b30000',
             color: mode === 'STOP' ? '#000' : '#fff',
-            border: 'none', borderRadius: '4px',
-            fontWeight: 900, fontSize: '1.1rem', letterSpacing: '1px',
+            border: 'none', borderRadius: '20px',
+            fontWeight: 800, fontSize: '0.95rem', letterSpacing: '1px',
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-            boxShadow: `0 0 15px ${mode === 'STOP' ? '#ffcc00' : '#ff3333'}60`,
+            boxShadow: `0 0 15px ${mode === 'STOP' ? '#ffcc00' : '#b30000'}60`,
             transition: 'all 0.2s'
           }}
         >
 
-          {mode === 'STOP' ? 'RESET STOP' : 'E-STOP'}
+          {mode === 'STOP' ? 'RESET STOP' : 'Stop'}
         </button>
       </div>
 

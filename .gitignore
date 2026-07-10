@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 
+plans.md
 prompts.md
 
 # Editor directories and files
