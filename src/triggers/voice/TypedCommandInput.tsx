@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Mic, MicOff } from 'lucide-react';
 import { parseUtterance, isParseError } from './grammar';
 import { commandBus } from '../../bus/commandBus';
 import { voiceTrigger, type VoiceState } from './voiceTrigger';
