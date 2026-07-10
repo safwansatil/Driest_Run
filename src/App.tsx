@@ -5,7 +5,7 @@ import RobotSimulator from './components/RobotSimulator';
 import CommandCenter from './components/CommandCenter';
 import ControlPanel from './components/ControlPanel';
 import VoicePanel from './triggers/voice/VoicePanel';
-import { TypedCommandInput } from './triggers/voice/TypedCommandInput';
+import TypedCommandInput from './triggers/voice/TypedCommandInput';
 import AuditLog from './components/AuditLog';
 import TelemetryDashboard from './components/TelemetryDashboard';
 import StatusBar from './components/StatusBar';
