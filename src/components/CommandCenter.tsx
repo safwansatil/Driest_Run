@@ -217,6 +217,7 @@ export const CommandCenter: React.FC = () => {
                 <span style={{ fontSize: '0.7rem', color: '#0066cc' }}>+Z</span>
                 <input 
                   type="range" 
+                  className="z-slider-3d"
                   min="-0.05" max="0.05" step="0.01" defaultValue="0"
                   ref={zSliderRef}
                   onMouseUp={(e) => (e.target as HTMLInputElement).value = "0"}
