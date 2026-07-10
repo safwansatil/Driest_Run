@@ -201,7 +201,7 @@ class CommandBus {
       fsm.transitionTo((command.type === 'jog' || (command.type === 'setJoint' && command.joint?.delta !== undefined)) ? 'JOGGING' : 'EXECUTE');
     }
     
-    execute(proposedJoints);
+    await execute(proposedJoints);
 
     auditLog.append({
       id: crypto.randomUUID(),
