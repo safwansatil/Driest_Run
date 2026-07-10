@@ -3,47 +3,141 @@ import { useStore } from '../store';
 
 import { runPinSequence, type SequenceStatus } from '../triggers/autonomous';
 import { fsm } from '../fsm';
-import TypedCommandInput from '../triggers/voice/TypedCommandInput';
+import AgentPanel from '../agent/AgentPanel';
 import { voiceTrigger, type VoiceState } from '../triggers/voice/voiceTrigger';
 
-import { initDualJoystickGUI } from '../triggers/joystick';
+import { NativeJoystick } from './NativeJoystick';
+import { commandBus } from '../bus/commandBus';
 
 const JoystickControls = () => {
   const { rpm } = useStore();
-  const leftRef = useRef<HTMLDivElement>(null);
-  const rightRef = useRef<HTMLDivElement>(null);
-  const speedRef = useRef<HTMLDivElement>(null);
+  const lastLeftCycleTime = useRef<number>(0);
+  const currentDirectionRef = useRef<number>(0);
+  const currentSpeedYRef = useRef<number>(0);
 
-  useEffect(() => {
-    if (leftRef.current && rightRef.current && speedRef.current) {
-      const cleanup = initDualJoystickGUI(leftRef.current, rightRef.current, speedRef.current);
-      return cleanup;
+  // Left Stick: Toggle Active Joint (Y axis)
+  const handleLeftMove = (_x: number, y: number) => {
+    const state = useStore.getState();
+    if (state.isEStop || state.mode === 'ERROR' || state.mode === 'EXECUTE' || state.controlMode !== 'JOYSTICK') return;
+
+    const threshold = 0.6;
+    const now = Date.now();
+    
+    // y > 0 is up, y < 0 is down
+    if (Math.abs(y) > threshold && now - lastLeftCycleTime.current > 300) {
+      if (y > threshold) {
+        // Up -> Decrement active joint
+        let next = state.activeJoint - 1;
+        if (next < 1) next = 6;
+        state.setActiveJoint(next);
+        lastLeftCycleTime.current = now;
+      } else if (y < -threshold) {
+        // Down -> Increment active joint
+        let next = state.activeJoint + 1;
+        if (next > 6) next = 1;
+        state.setActiveJoint(next);
+        lastLeftCycleTime.current = now;
+      }
     }
+  };
+
+  const handleLeftEnd = () => {};
+
+  // Right Stick: Rotate Active Joint (X axis)
+  const handleRightMove = (x: number, _y: number) => {
+    const state = useStore.getState();
+    if (state.isEStop || state.mode === 'ERROR' || state.mode === 'EXECUTE' || state.controlMode !== 'JOYSTICK') return;
+
+    const threshold = 0.2;
+    if (x > threshold) {
+      currentDirectionRef.current = 1;
+    } else if (x < -threshold) {
+      currentDirectionRef.current = -1;
+    } else {
+      currentDirectionRef.current = 0;
+    }
+  };
+
+  const handleRightEnd = () => {
+    currentDirectionRef.current = 0;
+  };
+
+  // Speed Stick: Adjust RPM (Y axis)
+  const handleSpeedMove = (_x: number, y: number) => {
+    currentSpeedYRef.current = y;
+  };
+
+  const handleSpeedEnd = () => {
+    currentSpeedYRef.current = 0;
+  };
+
+  // 10Hz stream for Joint Rotation commands
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (currentDirectionRef.current !== 0) {
+        const state = useStore.getState();
+        if (state.isEStop || state.mode === 'ERROR' || state.mode === 'EXECUTE' || state.controlMode !== 'JOYSTICK') return;
+
+        const { activeJoint, stepSize } = state;
+        commandBus.submit({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          source: 'joystick',
+          type: 'setJoint',
+          joint: { name: `joint_${activeJoint}`, delta: currentDirectionRef.current * stepSize }
+        });
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // 20Hz stream for continuous RPM adjustment
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (currentSpeedYRef.current !== 0) {
+        const state = useStore.getState();
+        const deltaRpm = currentSpeedYRef.current * 4; // Scale speed of change
+        const newRpm = Math.max(0, Math.min(255, state.rpm + deltaRpm));
+        state.setRpm(newRpm);
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-        <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#111' }}>Tri-Stick Control</h3>
+        <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#eee' }}>Tri-Stick Control</h3>
         <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#ff3366' }}>{Math.round(rpm)} RPM</span>
       </div>
       
       <div style={{ display: 'flex', gap: '2rem', width: '100%', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-          <div ref={leftRef} style={{ width: '100px', height: '100px', position: 'relative', background: 'rgba(255,255,255,0.08)', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)' }} />
-          <span style={{ fontSize: '0.7rem', color: '#555' }}>Toggle Joint (Y)</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-          <div ref={rightRef} style={{ width: '100px', height: '100px', position: 'relative', background: 'rgba(255,255,255,0.08)', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)' }} />
-          <span style={{ fontSize: '0.7rem', color: '#555' }}>Rotate Servo (X)</span>
-        </div>
+        <NativeJoystick 
+          color="#9933ff"
+          label="Toggle Joint (Y)"
+          lockX={true}
+          onMove={handleLeftMove}
+          onEnd={handleLeftEnd}
+        />
+        <NativeJoystick 
+          color="#00ccff"
+          label="Rotate Servo (X)"
+          lockY={true}
+          onMove={handleRightMove}
+          onEnd={handleRightEnd}
+        />
       </div>
 
       <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
-          <div ref={speedRef} style={{ width: '100px', height: '100px', position: 'relative', background: 'rgba(255,255,255,0.08)', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)' }} />
-          <span style={{ fontSize: '0.7rem', color: '#555' }}>Speed Control (Y)</span>
-        </div>
+        <NativeJoystick 
+          color="#ff3366"
+          label="Speed Control (Y)"
+          lockX={true}
+          onMove={handleSpeedMove}
+          onEnd={handleSpeedEnd}
+        />
       </div>
     </div>
   );
@@ -62,9 +156,16 @@ export const CommandCenter: React.FC = () => {
   const [seqError, setSeqError] = useState('');
   const [isPaused, setIsPaused] = useState(false);
 
+  // Coordinates State
+  const [coordX, setCoordX] = useState('0.3');
+  const [coordY, setCoordY] = useState('0.0');
+  const [coordZ, setCoordZ] = useState('0.15');
+  const [coordError, setCoordError] = useState('');
+
   // Voice State
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const isDisabled = mode === 'STOP' || mode === 'ERROR' || mode === 'EXECUTE';
 
@@ -95,11 +196,39 @@ export const CommandCenter: React.FC = () => {
     });
   };
 
+  const handleMoveToCoords = async () => {
+    setCoordError('');
+    const x = parseFloat(coordX);
+    const y = parseFloat(coordY);
+    const z = parseFloat(coordZ);
+
+    if (isNaN(x) || isNaN(y) || isNaN(z)) {
+      setCoordError('Please enter valid numerical coordinates');
+      return;
+    }
+
+    addLog({ source: 'autonomous', type: 'info', message: `Moving stylus to coordinates X: ${x.toFixed(3)}, Y: ${y.toFixed(3)}, Z: ${z.toFixed(3)}` });
+    
+    const result = await commandBus.submit({
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      source: 'autonomous',
+      type: 'moveTo',
+      target: { x, y, z }
+    });
+
+    if (result === 'REJECTED') {
+      setCoordError('Movement rejected (safety violation or out of reach)');
+    }
+  };
+
   // --- Mode 3: Voice ---
   useEffect(() => {
     const unsubTranscript = voiceTrigger.onTranscript((_partial, final) => {
+      if (controlMode !== 'VOICE') return;
       if (final) {
         setVoiceTranscript(final);
+        setVoiceError(null);
         addLog({ source: 'voice', type: 'info', message: `Recognized: "${final}"` });
       }
     });
@@ -109,6 +238,8 @@ export const CommandCenter: React.FC = () => {
     });
 
     const unsubRejection = voiceTrigger.onRejection((rejection) => {
+      if (controlMode !== 'VOICE') return;
+      setVoiceError(`Command rejected: ${rejection.reason}`);
       addLog({ source: 'voice', type: 'error', message: `Rejected: ${rejection.reason} (${rejection.raw})` });
     });
 
@@ -117,13 +248,14 @@ export const CommandCenter: React.FC = () => {
       unsubState();
       unsubRejection();
     };
-  }, [addLog]);
+  }, [addLog, controlMode]);
 
   const toggleVoice = useCallback(() => {
     if (voiceState === 'transcribing') return;
     if (voiceState === 'listening') {
       voiceTrigger.stopVoice();
     } else {
+      setVoiceError(null);
       voiceTrigger.startVoice();
     }
   }, [voiceState]);
@@ -208,7 +340,7 @@ export const CommandCenter: React.FC = () => {
               style={{
                 marginTop: '1rem',
                 padding: '0.5rem 1rem',
-                background: cameraMode ? '#cc0000' : '#0066cc',
+                background: cameraMode ? '#cc0000' : '#ff8c00',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '4px',
@@ -240,8 +372,8 @@ export const CommandCenter: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: '200px' }}>
             {!isAuthenticated ? (
               <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#111' }}>System Locked</h3>
-                <p style={{ fontSize: '0.8rem', color: '#555', marginBottom: '1rem' }}>Enter secret PIN to unlock physical command execution.</p>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#eee' }}>System Locked</h3>
+                <p style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '1rem' }}>Enter secret PIN to unlock physical command execution.</p>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginBottom: '1rem' }}>
                   <input 
                     type="password" 
@@ -267,8 +399,68 @@ export const CommandCenter: React.FC = () => {
               </div>
             ) : (
               <div style={{ width: '100%' }}>
-                <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111', textAlign: 'center' }}>Execute Physical Sequence</h3>
-                <p style={{ fontSize: '0.75rem', color: '#666', marginBottom: '1rem' }}>Enter a 6-digit sequence to press (keys 1-6 only).</p>
+                {/* Stylus Coordinates Input Section */}
+                <div style={{ width: '100%', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1.5rem' }}>
+                  <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.85rem', color: '#ff8c00', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Stylus Coordinates (XYZ)
+                  </h4>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                       <label style={{ fontSize: '0.65rem', color: '#aaa', marginBottom: '0.25rem', textAlign: 'center' }}>X (meters)</label>
+                       <input 
+                         type="text" 
+                         value={coordX} 
+                         onChange={e => setCoordX(e.target.value)} 
+                         style={{ padding: '0.4rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '4px', textAlign: 'center', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
+                       />
+                     </div>
+                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                       <label style={{ fontSize: '0.65rem', color: '#aaa', marginBottom: '0.25rem', textAlign: 'center' }}>Y (meters)</label>
+                       <input 
+                         type="text" 
+                         value={coordY} 
+                         onChange={e => setCoordY(e.target.value)} 
+                         style={{ padding: '0.4rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '4px', textAlign: 'center', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
+                       />
+                     </div>
+                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                       <label style={{ fontSize: '0.65rem', color: '#aaa', marginBottom: '0.25rem', textAlign: 'center' }}>Z (meters)</label>
+                       <input 
+                         type="text" 
+                         value={coordZ} 
+                         onChange={e => setCoordZ(e.target.value)} 
+                         style={{ padding: '0.4rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '4px', textAlign: 'center', fontSize: '0.85rem', width: '100%', boxSizing: 'border-box' }}
+                       />
+                     </div>
+                     <button 
+                       onClick={handleMoveToCoords}
+                       disabled={isDisabled}
+                       style={{
+                         marginTop: '1.1rem',
+                         padding: '0.45rem 1rem',
+                         background: isDisabled ? '#666' : 'linear-gradient(135deg, #ff8c00, #ff6600)',
+                         border: 'none',
+                         color: '#fff',
+                         borderRadius: '4px',
+                         fontWeight: 'bold',
+                         fontSize: '0.8rem',
+                         cursor: isDisabled ? 'not-allowed' : 'pointer',
+                         boxShadow: isDisabled ? 'none' : '0 4px 10px rgba(255, 140, 0, 0.3)',
+                         height: '34px'
+                       }}
+                     >
+                       Move
+                     </button>
+                  </div>
+                  {coordError && (
+                    <div style={{ color: '#ff4d4d', fontSize: '0.75rem', fontWeight: 'bold', textAlign: 'center' }}>
+                      {coordError}
+                    </div>
+                  )}
+                </div>
+
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#eee', textAlign: 'center' }}>Execute Physical Sequence</h3>
+                <p style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '1rem' }}>Enter a 6-digit sequence to press (keys 1-6 only).</p>
 
                 {seqError && (
                   <div style={{ color: 'red', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '1rem', textAlign: 'center' }}>
@@ -369,15 +561,15 @@ export const CommandCenter: React.FC = () => {
                 width: '120px', height: '120px', borderRadius: '50%',
                 background: voiceState === 'listening' 
                   ? 'rgba(255,51,51,0.1)' 
-                  : (voiceState === 'transcribing' ? 'rgba(234,179,8,0.1)' : 'rgba(0,102,204,0.05)'),
+                  : (voiceState === 'transcribing' ? 'rgba(234,179,8,0.1)' : 'rgba(255,140,0,0.05)'),
                 border: `2px solid ${
                   voiceState === 'listening' 
                     ? '#cc0000' 
-                    : (voiceState === 'transcribing' ? '#d97706' : '#0066cc')
+                    : (voiceState === 'transcribing' ? '#d97706' : '#ff8c00')
                 }`,
                 color: voiceState === 'listening' 
                   ? '#cc0000' 
-                  : (voiceState === 'transcribing' ? '#d97706' : '#0066cc'),
+                  : (voiceState === 'transcribing' ? '#d97706' : '#ff8c00'),
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
                 boxShadow: voiceState === 'listening' ? '0 0 30px rgba(255,51,51,0.2)' : 'none',
                 transition: 'all 0.3s',
@@ -412,19 +604,24 @@ export const CommandCenter: React.FC = () => {
               </div>
             </button>
             
-            <div style={{ width: '85%', background: 'rgba(255,255,255,0.8)', padding: '0.5rem 1rem', borderRadius: '8px', minHeight: '40px', border: '1px solid #ddd', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.65rem', color: '#555', marginBottom: '0.2rem', textTransform: 'uppercase' }}>Recognized Input</div>
-              <div style={{ color: '#111', fontStyle: voiceTranscript ? 'normal' : 'italic', fontSize: '0.9rem' }}>
+            <div style={{ width: '85%', background: 'rgba(255,255,255,0.08)', padding: '0.5rem 1rem', borderRadius: '8px', minHeight: '40px', border: '1px solid rgba(255,255,255,0.15)', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.65rem', color: '#9ca3af', marginBottom: '0.2rem', textTransform: 'uppercase' }}>Recognized Input</div>
+              <div style={{ color: '#eee', fontStyle: voiceTranscript ? 'normal' : 'italic', fontSize: '0.9rem' }}>
                 {voiceTranscript || 'Waiting for voice command...'}
               </div>
             </div>
+            {voiceError && (
+              <div style={{ color: '#fca5a5', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', width: '85%', textAlign: 'center', boxSizing: 'border-box' }}>
+                ⚠️ {voiceError}
+              </div>
+            )}
           </div>
         )}
 
         {/* AGENTIC MODE */}
         {controlMode === 'AGENTIC' && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0' }}>
-            <TypedCommandInput />
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '0.5rem 0', width: '100%' }}>
+            <AgentPanel />
           </div>
         )}
 

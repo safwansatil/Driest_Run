@@ -20,7 +20,7 @@ const TypedCommandInput = () => {
     const unsubState = voiceTrigger.onState(setMicState);
     const unsubTranscript = voiceTrigger.onTranscript((partial, final) => {
       if (final) {
-        setText(''); // Clear on submit (handled by voiceTrigger internally)
+        setText(final);
       } else if (partial) {
         setText(partial);
       }
@@ -83,9 +83,9 @@ const TypedCommandInput = () => {
         onClick={toggleMic}
         style={{
           width: '120px', height: '120px', borderRadius: '50%',
-          background: micState === 'listening' ? 'rgba(255,51,51,0.1)' : 'rgba(0,102,204,0.05)',
-          border: `2px solid ${micState === 'listening' ? '#cc0000' : '#0066cc'}`,
-          color: micState === 'listening' ? '#cc0000' : '#0066cc',
+          background: micState === 'listening' ? 'rgba(255,51,51,0.1)' : 'rgba(255,140,0,0.05)',
+          border: `2px solid ${micState === 'listening' ? '#cc0000' : '#ff8c00'}`,
+          color: micState === 'listening' ? '#cc0000' : '#ff8c00',
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
           boxShadow: micState === 'listening' ? '0 0 30px rgba(255,51,51,0.2)' : 'none',
           transition: 'all 0.3s',
@@ -117,8 +117,8 @@ const TypedCommandInput = () => {
       </button>
 
       {/* Input Box */}
-      <div style={{ width: '85%', background: 'rgba(255,255,255,0.8)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #ddd', textAlign: 'center', boxSizing: 'border-box' }}>
-        <div style={{ fontSize: '0.65rem', color: '#555', marginBottom: '0.4rem', textTransform: 'uppercase', fontWeight: 'bold' }}>
+      <div style={{ width: '85%', background: 'rgba(255,255,255,0.08)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.15)', textAlign: 'center', boxSizing: 'border-box' }}>
+        <div style={{ fontSize: '0.65rem', color: '#9ca3af', marginBottom: '0.4rem', textTransform: 'uppercase', fontWeight: 'bold' }}>
           Agentic Command
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -130,11 +130,11 @@ const TypedCommandInput = () => {
             placeholder="Type a command (e.g., jog joint 1 by 10 degrees)..."
             style={{
               flex: 1,
-              background: 'white',
-              border: '1px solid #ccc',
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)',
               borderRadius: '4px',
               padding: '8px',
-              color: '#111',
+              color: '#fff',
               fontSize: '0.85rem',
               outline: 'none',
               width: '100%',
@@ -144,7 +144,7 @@ const TypedCommandInput = () => {
           <button
             onClick={handleSubmit}
             style={{
-              background: '#0066cc',
+              background: '#ff8c00',
               border: 'none',
               borderRadius: '4px',
               padding: '8px 12px',
@@ -184,7 +184,7 @@ const TypedCommandInput = () => {
                 >
                   {entry.verdict.toUpperCase()}
                 </span>
-                <span style={{ color: '#555', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ color: '#ccc', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {entry.raw}
                 </span>
               </div>

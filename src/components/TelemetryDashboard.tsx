@@ -31,8 +31,8 @@ export const TelemetryDashboard: React.FC = () => {
     <div className="glass-panel" style={{ width: '100%', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 10, boxSizing: 'border-box' }}>
       
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '0.25rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#111' }}>Live Telemetry</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.25rem' }}>
+        <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Live Telemetry</h2>
       </div>
 
       {/* Cartesian Pose */}
@@ -80,8 +80,8 @@ export const TelemetryDashboard: React.FC = () => {
               return (
                 <div key={name} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontFamily: 'monospace' }}>
-                    <span style={{ color: '#555' }}>{name}</span>
-                    <span style={{ color: isNearLimit ? '#b22222' : '#111', fontWeight: 'bold' }}>{value.toFixed(3)}</span>
+                    <span style={{ color: '#bbb' }}>{name}</span>
+                    <span style={{ color: isNearLimit ? '#ff4d4d' : '#eee', fontWeight: 'bold' }}>{value.toFixed(3)}</span>
                   </div>
                   <div style={{ width: '100%', height: '4px', background: 'rgba(0,0,0,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
                     <div 

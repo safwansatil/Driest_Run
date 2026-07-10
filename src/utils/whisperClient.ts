@@ -2,6 +2,7 @@ export async function transcribeWithWhisper(audioBlob: Blob, apiKey: string): Pr
   const formData = new FormData();
   formData.append('file', audioBlob, 'audio.webm');
   formData.append('model', 'whisper-1');
+  formData.append('language', 'en');
 
   const url = apiKey ? 'https://api.openai.com/v1/audio/transcriptions' : '/api/transcribe';
   const headers: Record<string, string> = {};

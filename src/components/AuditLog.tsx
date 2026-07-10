@@ -80,7 +80,7 @@ export const AuditLog: React.FC = () => {
             />
             
             <div style={{ padding: '1rem 1.5rem', background: '#fff', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-              <button onClick={() => setReportText(null)} style={{ padding: '0.6rem 1.2rem', background: '#222', color: '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Close</button>
+              <button onClick={() => setReportText(null)} style={{ padding: '0.6rem 1.2rem', background: '#222', color: '#ff8c00', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Close</button>
               <button onClick={() => downloadReport('csv')} style={{ padding: '0.6rem 1.2rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Download .csv</button>
               <button onClick={() => downloadReport('html')} style={{ padding: '0.6rem 1.2rem', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Download .html</button>
             </div>
@@ -90,7 +90,7 @@ export const AuditLog: React.FC = () => {
       )}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#111' }}>
+        <h2 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff' }}>
           Session Log
         </h2>
         <button 

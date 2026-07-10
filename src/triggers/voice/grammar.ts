@@ -26,7 +26,10 @@ function stripFillers(text: string): string {
 }
 
 function normalize(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, ' ').trim();
+  return text.toLowerCase()
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, '') // Strip all common punctuation
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function parseNumberToken(token: string): number | null {
