@@ -1,30 +1,7 @@
 import { commandBus } from '../../bus/commandBus';
 import { parseUtterance, isParseError } from './grammar';
-
-declare global {
-  interface SpeechRecognition {
-    continuous: boolean;
-    interimResults: boolean;
-    lang: string;
-    onstart: (() => void) | null;
-    onend: (() => void) | null;
-    onerror: ((_ev: SpeechRecognitionErrorEvent) => void) | null;
-    onresult: ((_ev: SpeechRecognitionEvent) => void) | null;
-    start(): void;
-    stop(): void;
-    abort(): void;
-  }
-
-  var SpeechRecognition: {
-    prototype: SpeechRecognition;
-    new (): SpeechRecognition;
-  };
-
-  var webkitSpeechRecognition: {
-    prototype: SpeechRecognition;
-    new (): SpeechRecognition;
-  };
-}
+import { auditLog } from '../../audit';
+import { transcribeWithWhisper } from '../../utils/whisperClient';
 
 export type VoiceState = 'listening' | 'idle' | 'error' | 'unsupported';
 
@@ -44,20 +21,18 @@ export interface VoiceTrigger {
 
 type Unsubscribe = () => void;
 
-type RecognitionConstructor = {
-  new(): SpeechRecognition;
-};
-
-const SR: RecognitionConstructor | null =
-  typeof SpeechRecognition !== 'undefined'
-    ? SpeechRecognition as unknown as RecognitionConstructor
-    : typeof webkitSpeechRecognition !== 'undefined'
-      ? webkitSpeechRecognition as unknown as RecognitionConstructor
-      : null;
+function getApiKey(): string {
+  if (typeof localStorage !== 'undefined') {
+    return localStorage.getItem('openai_api_key') || '';
+  }
+  return '';
+}
 
 function createVoiceTrigger(): VoiceTrigger {
-  let recognition: SpeechRecognition | null = null;
+  let mediaRecorder: MediaRecorder | null = null;
   let currentState: VoiceState = 'idle';
+  let audioChunks: Blob[] = [];
+  let processing = false;
 
   const stateListeners = new Set<(state: VoiceState) => void>();
   const transcriptListeners = new Set<(partial: string, final: string) => void>();
@@ -69,9 +44,8 @@ function createVoiceTrigger(): VoiceTrigger {
     stateListeners.forEach((cb) => cb(state));
   }
 
-  if (SR === null) {
+  if (typeof window === 'undefined' || !navigator.mediaDevices || !window.MediaRecorder) {
     emitState('unsupported');
-
     return {
       startVoice() {},
       stopVoice() {},
@@ -95,58 +69,89 @@ function createVoiceTrigger(): VoiceTrigger {
     };
   }
 
-  function startVoice(): void {
-    if (SR === null) return;
-    stopVoice();
-
-    const rec = new SR();
-    recognition = rec;
-
-    rec.onstart = () => emitState('listening');
-    rec.onerror = () => {
-      errorListeners.forEach((cb) => cb('speech error'));
-      emitState('error');
-    };
-    rec.onend = () => emitState('idle');
-    rec.onresult = (event: SpeechRecognitionEvent) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          transcriptListeners.forEach((cb) => cb('', transcript));
-          const result = parseUtterance(transcript);
-          if (isParseError(result)) {
-            rejectionListeners.forEach((cb) => cb({ reason: result.reason, raw: result.raw }));
-          } else {
-            commandBus.submit(result);
-          }
-        } else {
-          transcriptListeners.forEach((cb) => cb(transcript, ''));
-        }
-      }
-    };
+  async function processAudio(blob: Blob): Promise<void> {
+    if (processing) return;
+    processing = true;
 
     try {
-      rec.continuous = true;
-      rec.interimResults = true;
-      rec.lang = 'en-US';
-      rec.start();
+      const text = await transcribeWithWhisper(blob, getApiKey());
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      transcriptListeners.forEach((cb) => cb('', trimmed));
+
+      const result = parseUtterance(trimmed);
+      if (isParseError(result)) {
+        rejectionListeners.forEach((cb) => cb({ reason: result.reason, raw: result.raw }));
+        auditLog.append({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          command: {
+            id: crypto.randomUUID(),
+            source: 'voice',
+            type: 'moveTo',
+            timestamp: Date.now(),
+          },
+          verdict: 'REJECTED',
+          reason: result.reason,
+        });
+      } else {
+        await commandBus.dispatch(result);
+      }
     } catch (err) {
-      errorListeners.forEach((cb) => cb(err instanceof Error ? err.message : String(err)));
-      recognition = null;
+      const message = err instanceof Error ? err.message : String(err);
+      errorListeners.forEach((cb) => cb(message));
+      emitState('error');
+    } finally {
+      processing = false;
+      audioChunks = [];
+    }
+  }
+
+  async function startVoice(): Promise<void> {
+    if (currentState === 'listening') return;
+    if (processing) return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+        if (audioChunks.length > 0) {
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          await processAudio(blob);
+        }
+        emitState('idle');
+        mediaRecorder = null;
+      };
+
+      mediaRecorder.onerror = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        errorListeners.forEach((cb) => cb('MediaRecorder error'));
+        emitState('error');
+        mediaRecorder = null;
+      };
+
+      mediaRecorder.start();
+      emitState('listening');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      errorListeners.forEach((cb) => cb(message));
       emitState('error');
     }
   }
 
   function stopVoice(): void {
-    if (recognition) {
-      try {
-        recognition.onend = null;
-        recognition.abort();
-      } catch {
-        // ignore cleanup errors
-      }
-      recognition = null;
-      emitState('idle');
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
     }
   }
 

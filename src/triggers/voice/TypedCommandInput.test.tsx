@@ -1,14 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { act } from 'react';
-import TypedCommandInput from './TypedCommandInput';
 
 describe('TypedCommandInput', () => {
   let dispatchSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     vi.resetModules();
-    dispatchSpy = vi.fn();
+    dispatchSpy = vi.fn().mockResolvedValue('ACCEPTED');
     vi.doMock('../../bus/commandBus', () => ({
       commandBus: { dispatch: dispatchSpy },
     }));

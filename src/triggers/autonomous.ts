@@ -1,11 +1,11 @@
 import { commandBus } from '../bus/commandBus';
 
-export function runPinSequence(_pin: string): void {
+export async function runPinSequence(_pin: string): Promise<void> {
   // Iterate through PIN digits and send moveTo commands
   // This would read from key.config.json
   
   // Example for first digit
-  commandBus.submit({
+  await commandBus.submit({
     id: crypto.randomUUID(),
     source: 'autonomous',
     type: 'moveTo',

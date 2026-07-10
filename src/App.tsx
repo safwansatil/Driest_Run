@@ -5,6 +5,9 @@ import RobotSimulator from './components/RobotSimulator';
 import CommandCenter from './components/CommandCenter';
 
 import ControlPanel from './components/ControlPanel';
+import VoicePanel from './triggers/voice/VoicePanel';
+import TypedCommandInput from './triggers/voice/TypedCommandInput';
+import AgentPanel from './agent/AgentPanel';
 
 import AuditLog from './components/AuditLog';
 import TelemetryDashboard from './components/TelemetryDashboard';
@@ -58,6 +61,10 @@ function App() {
           {/* Left Sidebar Stack */}
           <div style={{ pointerEvents: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%', width: '380px', overflowY: 'auto', paddingRight: '0.5rem' }}>
             <CommandCenter />
+            <ControlPanel />
+            <VoicePanel />
+            <TypedCommandInput />
+            <AgentPanel />
             <TelemetryDashboard />
             <div style={{ flex: 1, minHeight: 0 }}>
               <AuditLog />
