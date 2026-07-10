@@ -4,6 +4,8 @@ import { runAgent } from './agent';
 import { callLLM } from './llmClient';
 import { DEMO_PROMPTS } from './demoPrompts';
 import { transcribeWithWhisper } from '../utils/whisperClient';
+import { startSilenceDetection } from '../utils/silenceDetector';
+import { cancel as cancelSpeech } from './tts';
 
 const AgentPanel = () => {
   const {
@@ -20,10 +22,22 @@ const AgentPanel = () => {
   const [probeError, setProbeError] = useState<string | null>(null);
   const [probing, setProbing] = useState(true);
   const [recording, setRecording] = useState(false);
+  const [volume, setVolume] = useState(0);
+  const [transcribing, setTranscribing] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   
   const messageEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const silenceCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (silenceCleanupRef.current) {
+        silenceCleanupRef.current();
+      }
+    };
+  }, []);
 
   // Probe LLM Proxy on mount with a trivial request
   useEffect(() => {
@@ -73,6 +87,7 @@ const AgentPanel = () => {
   );
 
   const startRecording = async () => {
+    setVoiceError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
@@ -86,34 +101,59 @@ const AgentPanel = () => {
       };
 
       mediaRecorder.onstop = async () => {
+        if (silenceCleanupRef.current) {
+          silenceCleanupRef.current();
+          silenceCleanupRef.current = null;
+        }
+        setVolume(0);
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         stream.getTracks().forEach((t) => t.stop());
 
         try {
-          setProbing(true); // Disable inputs while transcribing
+          setTranscribing(true);
           const transcription = await transcribeWithWhisper(audioBlob, ''); // serverless fallback
           if (transcription.trim()) {
             setText(transcription.trim());
           }
         } catch (err: any) {
           console.error(err);
+          setVoiceError(`Voice transcription failed: ${err.message || String(err)}`);
         } finally {
-          setProbing(false);
+          setTranscribing(false);
         }
       };
 
       mediaRecorder.start();
       setRecording(true);
+
+      // Start silence detection
+      silenceCleanupRef.current = startSilenceDetection(stream, {
+        onSilence: () => {
+          stopRecording();
+        },
+        onVolumeChange: (vol) => {
+          setVolume(vol);
+        },
+        threshold: 0.015,
+        silenceDuration: 1100,
+      });
+
     } catch (err: any) {
       console.error(err);
+      setVoiceError(`Failed to start recording: ${err.message || String(err)}`);
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && recording) {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
-      setRecording(false);
     }
+    if (silenceCleanupRef.current) {
+      silenceCleanupRef.current();
+      silenceCleanupRef.current = null;
+    }
+    setRecording(false);
+    setVolume(0);
   };
 
   const toggleRecording = () => {
@@ -124,8 +164,8 @@ const AgentPanel = () => {
     }
   };
 
-  const displayError = probeError || error;
-  const isInputDisabled = probing || !!probeError || isThinking;
+  const displayError = probeError || error || voiceError;
+  const isInputDisabled = probing || !!probeError || isThinking || transcribing;
 
   return (
     <div
@@ -146,7 +186,10 @@ const AgentPanel = () => {
           🤖 AGENT CONTROL
         </div>
         <button
-          onClick={clearMessages}
+          onClick={() => {
+            clearMessages();
+            cancelSpeech();
+          }}
           style={{
             background: 'transparent',
             border: 'none',
@@ -167,7 +210,13 @@ const AgentPanel = () => {
           type="checkbox"
           id="speakToggle"
           checked={speakResult}
-          onChange={(e) => setSpeakResult(e.target.checked)}
+          onChange={(e) => {
+            const val = e.target.checked;
+            setSpeakResult(val);
+            if (!val) {
+              cancelSpeech();
+            }
+          }}
           style={{ cursor: 'pointer' }}
         />
         <label
@@ -334,6 +383,38 @@ const AgentPanel = () => {
           </button>
         ))}
       </div>
+
+      {/* Real-time VU meter for recording */}
+      {recording && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '6px 10px' }}>
+          <span style={{ fontSize: '10px', color: '#fca5a5', fontFamily: 'monospace', marginRight: '6px' }}>LISTENING:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '12px', flex: 1 }}>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((barIndex) => {
+              const scale = 0.2 + volume * 1.8;
+              const height = Math.min(100, Math.max(15, barIndex * 12.5 * scale));
+              return (
+                <div
+                  key={barIndex}
+                  style={{
+                    width: '4px',
+                    height: `${height}%`,
+                    background: '#f87171',
+                    borderRadius: '2px',
+                    transition: 'height 0.05s ease',
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+      
+      {transcribing && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#fbbf24', background: 'rgba(245,158,11,0.1)', border: '1px dashed rgba(245,158,11,0.3)', borderRadius: '4px', padding: '6px 10px', fontFamily: 'monospace' }}>
+          <span className="spin" style={{ display: 'inline-block' }}>⏳</span>
+          <span>Transcribing voice audio...</span>
+        </div>
+      )}
 
       {/* Input Row */}
       <div style={{ display: 'flex', gap: '4px' }}>

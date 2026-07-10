@@ -2,8 +2,9 @@ import { commandBus } from '../../bus/commandBus';
 import { parseUtterance, isParseError } from './grammar';
 import { auditLog } from '../../audit';
 import { transcribeWithWhisper } from '../../utils/whisperClient';
+import { startSilenceDetection } from '../../utils/silenceDetector';
 
-export type VoiceState = 'listening' | 'idle' | 'error' | 'unsupported';
+export type VoiceState = 'listening' | 'transcribing' | 'idle' | 'error' | 'unsupported';
 
 export interface Rejection {
   reason: string;
@@ -17,6 +18,7 @@ export interface VoiceTrigger {
   onError(cb: (err: string) => void): Unsubscribe;
   onState(cb: (state: VoiceState) => void): Unsubscribe;
   onRejection(cb: (rejection: Rejection) => void): Unsubscribe;
+  onVolume(cb: (volume: number) => void): Unsubscribe;
 }
 
 type Unsubscribe = () => void;
@@ -33,11 +35,13 @@ function createVoiceTrigger(): VoiceTrigger {
   let currentState: VoiceState = 'idle';
   let audioChunks: Blob[] = [];
   let processing = false;
+  let silenceCleanup: (() => void) | null = null;
 
   const stateListeners = new Set<(state: VoiceState) => void>();
   const transcriptListeners = new Set<(partial: string, final: string) => void>();
   const errorListeners = new Set<(err: string) => void>();
   const rejectionListeners = new Set<(rejection: Rejection) => void>();
+  const volumeListeners = new Set<(volume: number) => void>();
 
   function emitState(state: VoiceState): void {
     currentState = state;
@@ -65,6 +69,10 @@ function createVoiceTrigger(): VoiceTrigger {
       onRejection(cb: (rejection: Rejection) => void): Unsubscribe {
         rejectionListeners.add(cb);
         return () => rejectionListeners.delete(cb);
+      },
+      onVolume(cb: (volume: number) => void): Unsubscribe {
+        volumeListeners.add(cb);
+        return () => volumeListeners.delete(cb);
       },
     };
   }
@@ -124,16 +132,27 @@ function createVoiceTrigger(): VoiceTrigger {
       };
 
       mediaRecorder.onstop = async () => {
+        if (silenceCleanup) {
+          silenceCleanup();
+          silenceCleanup = null;
+        }
         stream.getTracks().forEach((track) => track.stop());
         if (audioChunks.length > 0) {
           const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          emitState('transcribing');
           await processAudio(blob);
         }
-        emitState('idle');
+        if (currentState === 'transcribing') {
+          emitState('idle');
+        }
         mediaRecorder = null;
       };
 
       mediaRecorder.onerror = () => {
+        if (silenceCleanup) {
+          silenceCleanup();
+          silenceCleanup = null;
+        }
         stream.getTracks().forEach((track) => track.stop());
         errorListeners.forEach((cb) => cb('MediaRecorder error'));
         emitState('error');
@@ -142,6 +161,19 @@ function createVoiceTrigger(): VoiceTrigger {
 
       mediaRecorder.start();
       emitState('listening');
+
+      // Start silence detection
+      silenceCleanup = startSilenceDetection(stream, {
+        onSilence: () => {
+          stopVoice();
+        },
+        onVolumeChange: (volume) => {
+          volumeListeners.forEach((cb) => cb(volume));
+        },
+        threshold: 0.015,
+        silenceDuration: 1100,
+      });
+
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       errorListeners.forEach((cb) => cb(message));
@@ -174,6 +206,10 @@ function createVoiceTrigger(): VoiceTrigger {
     onRejection(cb: (rejection: Rejection) => void): Unsubscribe {
       rejectionListeners.add(cb);
       return () => rejectionListeners.delete(cb);
+    },
+    onVolume(cb: (volume: number) => void): Unsubscribe {
+      volumeListeners.add(cb);
+      return () => volumeListeners.delete(cb);
     },
   };
 }
