@@ -117,7 +117,7 @@ function createVoiceTrigger(): VoiceTrigger {
           if (isParseError(result)) {
             rejectionListeners.forEach((cb) => cb({ reason: result.reason, raw: result.raw }));
           } else {
-            commandBus.dispatch(result);
+            commandBus.submit(result);
           }
         } else {
           transcriptListeners.forEach((cb) => cb(transcript, ''));

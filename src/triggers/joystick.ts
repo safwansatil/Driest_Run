@@ -134,7 +134,7 @@ export function initDualJoystickGUI(
 
       const { activeJoint, stepSize } = state;
       console.log(`[Joystick] Emitting setJoint for joint_${activeJoint} with delta ${currentDirection * stepSize}`);
-      commandBus.dispatch({
+      commandBus.submit({
         id: crypto.randomUUID(),
         timestamp: Date.now(),
         source: 'joystick',

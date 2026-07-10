@@ -63,7 +63,7 @@ const JoystickControls = () => {
         const state = useStore.getState();
         if (state.isEStop || state.mode === 'ERROR' || state.mode === 'EXECUTE') return;
         
-        commandBus.dispatch({
+        commandBus.submit({
           id: crypto.randomUUID(),
           timestamp: Date.now(),
           source: 'joystick',
@@ -255,28 +255,7 @@ export const CommandCenter: React.FC = () => {
         
         {/* JOYSTICK MODE */}
         {controlMode === 'JOYSTICK' && (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#111' }}>Cartesian Jogging</h3>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem' }}>
-              <div style={{ flex: 1, height: '160px', background: 'rgba(255,255,255,0.8)', borderRadius: '12px', position: 'relative', border: '1px solid #ddd', boxSizing: 'border-box' }} ref={joystickRef}>
-                {/* NippleJS mounts here */}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(255,255,255,0.8)', padding: '1rem 0.5rem', borderRadius: '12px', height: '160px', border: '1px solid #ddd', boxSizing: 'border-box' }}>
-                <input 
-                  type="range" 
-                  min="-0.05" max="0.05" step="0.01" defaultValue="0"
-                  ref={zSliderRef}
-                  onMouseUp={(e) => (e.target as HTMLInputElement).value = "0"}
-                  onTouchEnd={(e) => (e.target as HTMLInputElement).value = "0"}
-                  style={{ writingMode: 'vertical-lr', direction: 'rtl', flex: 1, margin: 0, cursor: 'pointer' }} 
-                />
-              </div>
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#666', textAlign: 'center' }}>Drag joystick for X/Y planar translation. Slider for Z.</div>
-          </>
+          <JoystickControls />
         )}
 
         {/* MOUSE MODE */}
@@ -315,7 +294,6 @@ export const CommandCenter: React.FC = () => {
 
         {/* Keyboard MODE */}
         {controlMode === 'Keyboard' && (
-          <div style={{ textAlign: 'center', padding: '2rem 0', color: '#555' }}>
           <div style={{ textAlign: 'center', padding: '0.5rem 0', color: '#555' }}>
 
             <p style={{ margin: 0, fontWeight: 'bold' }}>Keyboard Control Active</p>

@@ -20,21 +20,16 @@ const TypedCommandInput = () => {
     const result = parseUtterance(trimmed);
 
     if (isParseError(result)) {
-        { id: entryId, raw: trimmed, verdict: 'REJECTED', reason: result.reason } as HistoryEntry,
-        ...prev
-=======
       setHistory((prev) => [
-        { verdict: 'rejected', reason: result.reason, raw: result.raw },
+        { verdict: 'rejected', reason: result.reason, raw: result.raw || trimmed },
         ...prev,
-
       ].slice(0, 3));
       setText('');
       return;
     }
 
-
     const typedCmd = { ...result, source: 'typed' as const };
-    commandBus.dispatch(typedCmd);
+    commandBus.submit(typedCmd as any);
 
     setHistory((prev) => [
       { verdict: 'accepted', type: result.type, raw: trimmed },
