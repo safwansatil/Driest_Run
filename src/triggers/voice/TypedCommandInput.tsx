@@ -20,35 +20,26 @@ const TypedCommandInput = () => {
     const result = parseUtterance(trimmed);
 
     if (isParseError(result)) {
-<<<<<<< HEAD
-      const entryId = crypto.randomUUID();
-      setHistory(prev => [
         { id: entryId, raw: trimmed, verdict: 'REJECTED', reason: result.reason } as HistoryEntry,
         ...prev
 =======
       setHistory((prev) => [
         { verdict: 'rejected', reason: result.reason, raw: result.raw },
         ...prev,
->>>>>>> 705dc6ca0440e41e6b0557e9582601daa775e537
+
       ].slice(0, 3));
       setText('');
       return;
     }
 
-<<<<<<< HEAD
-    const cmd = { ...result, source: 'typed' as const };
-    pendingRef.current.add(cmd.id);
-    setHistory(prev => [
-      { id: cmd.id, raw: trimmed, verdict: 'PENDING' } as HistoryEntry,
-      ...prev
-=======
+
     const typedCmd = { ...result, source: 'typed' as const };
     commandBus.dispatch(typedCmd);
 
     setHistory((prev) => [
       { verdict: 'accepted', type: result.type, raw: trimmed },
       ...prev,
->>>>>>> 705dc6ca0440e41e6b0557e9582601daa775e537
+
     ].slice(0, 3));
     setText('');
   }, [text]);

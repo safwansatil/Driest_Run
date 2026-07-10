@@ -8,6 +8,7 @@ export interface CartesianPose {
   nx: number;
   ny: number;
   nz: number;
+  quat?: THREE.Quaternion;
 }
 
 // Default neutral home angles
@@ -77,6 +78,7 @@ export function getStylusPose(joints: JointState): CartesianPose {
   const T_tip = transforms[transforms.length - 1];
 
   const position = new THREE.Vector3().setFromMatrixPosition(T_tip);
+  const quat = new THREE.Quaternion().setFromRotationMatrix(T_tip);
   const zAxis = new THREE.Vector3(
     T_tip.elements[8],
     T_tip.elements[9],
@@ -90,6 +92,7 @@ export function getStylusPose(joints: JointState): CartesianPose {
     nx: zAxis.x,
     ny: zAxis.y,
     nz: zAxis.z,
+    quat: quat
   };
 }
 
@@ -160,7 +163,8 @@ export function solveIK(
   initialJoints: JointState,
   urdfLimits: UrdfLimits,
   maxIterations = 80,
-  tolerance = 0.0001
+  tolerance = 0.0001,
+  targetQuat?: THREE.Quaternion
 ): { joints: JointState; converged: boolean; iterations: number; error: number } {
   
   const currentJoints = { ...initialJoints };
@@ -178,12 +182,27 @@ export function solveIK(
   for (iterations = 0; iterations < maxIterations; iterations++) {
     const pose = getStylusPose(currentJoints);
     const currPos = new THREE.Vector3(pose.x, pose.y, pose.z);
-    const currDir = new THREE.Vector3(pose.nx, pose.ny, pose.nz);
 
     const posErr = new THREE.Vector3().subVectors(targetPos, currPos);
-    const dirErr = new THREE.Vector3().subVectors(targetDir, currDir);
     
-    error = posErr.length() + wDir * dirErr.length();
+    let dirErr = new THREE.Vector3();
+    let rotErr = new THREE.Vector3();
+    
+    if (targetQuat && pose.quat) {
+      const currQuat = pose.quat.clone();
+      const deltaQ = targetQuat.clone().multiply(currQuat.invert());
+      if (deltaQ.w < 0) { deltaQ.x *= -1; deltaQ.y *= -1; deltaQ.z *= -1; deltaQ.w *= -1; }
+      const angle = 2 * Math.acos(Math.max(-1, Math.min(1, deltaQ.w)));
+      const s = Math.sqrt(1 - deltaQ.w * deltaQ.w);
+      if (s > 0.001) {
+         rotErr.set(deltaQ.x, deltaQ.y, deltaQ.z).divideScalar(s).multiplyScalar(angle);
+      }
+      error = posErr.length() + wDir * rotErr.length();
+    } else {
+      const currDir = new THREE.Vector3(pose.nx, pose.ny, pose.nz);
+      dirErr.subVectors(targetDir, currDir);
+      error = posErr.length() + wDir * dirErr.length();
+    }
 
     if (error < tolerance) {
       converged = true;
@@ -203,12 +222,32 @@ export function solveIK(
       J[0][j] = (posePlus.x - pose.x) / eps;
       J[1][j] = (posePlus.y - pose.y) / eps;
       J[2][j] = (posePlus.z - pose.z) / eps;
-      J[3][j] = ((posePlus.nx - pose.nx) / eps) * wDir;
-      J[4][j] = ((posePlus.ny - pose.ny) / eps) * wDir;
-      J[5][j] = ((posePlus.nz - pose.nz) / eps) * wDir;
+      
+      if (targetQuat && posePlus.quat && pose.quat) {
+         const deltaQ = posePlus.quat.clone().multiply(pose.quat.clone().invert());
+         if (deltaQ.w < 0) { deltaQ.x *= -1; deltaQ.y *= -1; deltaQ.z *= -1; deltaQ.w *= -1; }
+         const d_angle = 2 * Math.acos(Math.max(-1, Math.min(1, deltaQ.w)));
+         const d_s = Math.sqrt(1 - deltaQ.w * deltaQ.w);
+         const d_rotErr = new THREE.Vector3();
+         if (d_s > 0.001) {
+            d_rotErr.set(deltaQ.x, deltaQ.y, deltaQ.z).divideScalar(d_s).multiplyScalar(d_angle);
+         }
+         J[3][j] = (d_rotErr.x / eps) * wDir;
+         J[4][j] = (d_rotErr.y / eps) * wDir;
+         J[5][j] = (d_rotErr.z / eps) * wDir;
+      } else {
+         J[3][j] = ((posePlus.nx - pose.nx) / eps) * wDir;
+         J[4][j] = ((posePlus.ny - pose.ny) / eps) * wDir;
+         J[5][j] = ((posePlus.nz - pose.nz) / eps) * wDir;
+      }
     }
 
-    const dx = [posErr.x, posErr.y, posErr.z, dirErr.x * wDir, dirErr.y * wDir, dirErr.z * wDir];
+    let dx: number[];
+    if (targetQuat) {
+       dx = [posErr.x, posErr.y, posErr.z, rotErr.x * wDir, rotErr.y * wDir, rotErr.z * wDir];
+    } else {
+       dx = [posErr.x, posErr.y, posErr.z, dirErr.x * wDir, dirErr.y * wDir, dirErr.z * wDir];
+    }
 
     const JT: number[][] = Array(m).fill(0).map(() => Array(6).fill(0));
     for (let r = 0; r < 6; r++) {

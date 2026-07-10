@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import type { ArmCommand } from '../types/commands';
 import { fsm } from '../fsm';
 import { solveIK, getEndEffectorPose } from '../kinematics';
@@ -29,7 +30,13 @@ class CommandBus {
 
     // 2. Kinematics
     if (command.type === 'setJoint' && command.joint) {
-      proposedJoints = { ...currentJoints, [command.joint.name]: command.joint.value };
+      if (command.joint.delta !== undefined) {
+         proposedJoints = { ...currentJoints, [command.joint.name as keyof JointState]: currentJoints[command.joint.name as keyof JointState] + command.joint.delta };
+      } else if (command.joint.value !== undefined) {
+         proposedJoints = { ...currentJoints, [command.joint.name as keyof JointState]: command.joint.value };
+      } else {
+         return; // Invalid setJoint
+      }
     } else if (command.type === 'moveTo' && command.target) {
       const ikResult = solveIK(command.target, currentJoints);
       proposedJoints = ikResult.jointAngles;
@@ -50,11 +57,23 @@ class CommandBus {
       }
     } else if (command.type === 'jog' && command.delta) {
       const currentPose = getEndEffectorPose(currentJoints);
-      const target = {
+      const targetPos = {
         x: currentPose.x + (command.delta.x || 0),
         y: currentPose.y + (command.delta.y || 0),
         z: currentPose.z + (command.delta.z || 0)
       };
+      
+      let targetQuatArray: [number, number, number, number] | undefined = undefined;
+      
+      if ((command.delta.rx || command.delta.ry || command.delta.rz) && currentPose.quat) {
+         const q = currentPose.quat.clone();
+         const euler = new THREE.Euler(command.delta.rx || 0, command.delta.ry || 0, command.delta.rz || 0, 'XYZ');
+         const dq = new THREE.Quaternion().setFromEuler(euler);
+         q.multiply(dq);
+         targetQuatArray = [q.x, q.y, q.z, q.w];
+      }
+
+      const target = { ...targetPos, quat: targetQuatArray };
       const ikResult = solveIK(target, currentJoints);
       proposedJoints = ikResult.jointAngles;
       ikError = ikResult.error;
@@ -93,7 +112,7 @@ class CommandBus {
     }
 
     // 4. Executor
-    fsm.transitionTo(command.type === 'jog' ? 'JOGGING' : 'EXECUTE');
+    fsm.transitionTo((command.type === 'jog' || (command.type === 'setJoint' && command.joint?.delta !== undefined)) ? 'JOGGING' : 'EXECUTE');
     
     execute(proposedJoints);
 
