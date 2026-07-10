@@ -53,17 +53,17 @@ export const TypedCommandInput = () => {
     if (isParseError(result)) {
       const entryId = crypto.randomUUID();
       setHistory(prev => [
-        { id: entryId, raw: trimmed, verdict: 'REJECTED', reason: result.reason },
+        { id: entryId, raw: trimmed, verdict: 'REJECTED' as const, reason: result.reason },
         ...prev
       ].slice(0, 3));
       setText('');
       return;
     }
 
-    const cmd = { ...result, source: 'typed' as const };
+    const cmd = { ...result, source: 'dashboard' as const };
     pendingRef.current.add(cmd.id);
     setHistory(prev => [
-      { id: cmd.id, raw: trimmed, verdict: 'PENDING' },
+      { id: cmd.id, raw: trimmed, verdict: 'PENDING' as const },
       ...prev
     ].slice(0, 3));
     setText('');

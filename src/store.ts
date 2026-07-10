@@ -30,6 +30,21 @@ interface AppState {
   showGrid: boolean;
   setShowGrid: (show: boolean) => void;
   
+  gizmoMode: 'translate' | 'rotate';
+  setGizmoMode: (mode: 'translate' | 'rotate') => void;
+  
+  activeJoint: number;
+  setActiveJoint: (joint: number) => void;
+  
+  cameraMode: boolean;
+  setCameraMode: (mode: boolean) => void;
+  
+  stepSize: number;
+  setStepSize: (size: number) => void;
+  
+  rpm: number;
+  setRpm: (rpm: number) => void;
+  
   backendError: string | null;
   setError: (msg: string | null) => void;
   
@@ -59,6 +74,21 @@ export const useStore = create<AppState>((set) => ({
   
   showGrid: true,
   setShowGrid: (showGrid) => set({ showGrid }),
+  
+  gizmoMode: 'translate',
+  setGizmoMode: (gizmoMode) => set({ gizmoMode }),
+  
+  activeJoint: 1,
+  setActiveJoint: (activeJoint) => set({ activeJoint }),
+  
+  cameraMode: false,
+  setCameraMode: (cameraMode) => set({ cameraMode }),
+  
+  stepSize: 0.05,
+  setStepSize: (stepSize) => set({ stepSize }),
+  
+  rpm: 20,
+  setRpm: (rpm) => set({ rpm, stepSize: (rpm * 2 * Math.PI / 60) * 0.1 }),
   
   backendError: null,
   setError: (backendError) => set({ backendError, mode: backendError ? 'ERROR' : 'REST' }),
