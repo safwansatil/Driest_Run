@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { JointState, ArmMode, LogEntry, ArmCommand, UrdfLimits } from './types';
 import { commandBus } from './bus/commandBus';
 
-export type ControlMode = 'JOYSTICK' | 'MOUSE' | 'Keyboard' | 'VOICE' | 'PIN';
+export type ControlMode = 'JOYSTICK' | 'MOUSE' | 'Keyboard' | 'VOICE' | 'PIN' | 'AGENTIC';
 
 // Hardcoded fallback HOME_JOINTS if URDF hasn't loaded
 export const HOME_JOINTS: JointState = {
