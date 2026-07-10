@@ -9,6 +9,7 @@ import { useStore } from './store';
 import { handleKeyboardInput } from './triggers/keyboard';
 import './index.css';
 
+
 function App() {
   const { mode, isEStop, controlMode } = useStore();
 

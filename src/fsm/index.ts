@@ -48,6 +48,13 @@ class ArmFSM {
       }
     }
 
+    if (this.currentState === 'JOGGING') {
+      // Reject autonomous commands if the operator is actively jogging the arm manually
+      if (command.source === 'autonomous') {
+        return false;
+      }
+    }
+
     return true;
   }
 }
