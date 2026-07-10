@@ -18,6 +18,27 @@ export function initDualJoystickGUI(
   if (speedManager) speedManager.destroy();
   if (rotationIntervalRef !== null) clearInterval(rotationIntervalRef);
 
+  const applyPremiumTheme = (manager: any, color: string) => {
+    // NippleJS creates the UI asynchronously sometimes, but in static mode it's usually immediate.
+    setTimeout(() => {
+      if (manager && manager[0] && manager[0].ui) {
+        const ui = manager[0].ui;
+        if (ui.back) {
+          ui.back.style.background = 'rgba(10, 10, 15, 0.4)';
+          ui.back.style.border = `2px solid ${color}80`;
+          ui.back.style.boxShadow = `0 0 15px ${color}30, inset 0 0 10px rgba(0,0,0,0.8)`;
+          ui.back.style.opacity = '1';
+        }
+        if (ui.front) {
+          ui.front.style.background = `linear-gradient(135deg, ${color}, #ffffff)`;
+          ui.front.style.boxShadow = `0 4px 12px ${color}90`;
+          ui.front.style.border = '1px solid rgba(255,255,255,0.5)';
+          ui.front.style.opacity = '1';
+        }
+      }
+    }, 50);
+  };
+
   // --- Left Stick (Toggle Joint Y) ---
   leftManager = nipplejs.create({
     zone: leftContainer,
@@ -27,6 +48,7 @@ export function initDualJoystickGUI(
     size: 100,
     lockX: true // Lock X axis so it only moves up/down (Y axis)
   });
+  applyPremiumTheme(leftManager, '#9933ff');
 
   let lastCycleTime = 0;
   leftManager.on('move', ((_: any, data: any) => {
@@ -61,6 +83,7 @@ export function initDualJoystickGUI(
     size: 100,
     lockY: true // Lock Y axis so it only moves left/right (X axis)
   });
+  applyPremiumTheme(rightManager, '#00ccff');
 
   let currentDirection = 0;
 
@@ -96,6 +119,7 @@ export function initDualJoystickGUI(
     size: 100,
     lockX: true // Lock X axis so it only moves up/down (Y axis)
   });
+  applyPremiumTheme(speedManager, '#ff3366');
 
   let speedInterval: number | null = null;
   let currentSpeedData: { angle: number; distance: number } | null = null;

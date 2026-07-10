@@ -2,6 +2,8 @@ import type { JointState } from '../types';
 import type { ArmCommand } from '../types/commands';
 import { useStore } from '../store';
 import { fsm } from '../fsm';
+import * as THREE from 'three';
+import { forwardKinematics } from '../kinematics/ikSolver';
 
 export interface ValidationReport {
   pass: boolean;
@@ -112,8 +114,46 @@ export function validate(_command: ArmCommand, proposedJointAngles: JointState):
   // 3. Velocity / Accel bounds check (Stub)
   // TODO: Determine if transition from current to proposed violates velocity max over time dt
   
-  // 4. Self-collision check (Stub)
-  // TODO: Use capsule distance math between arm links
+  // 4. Anti-Ground Collision (Z-Axis) & Anti-Self Collision
+  const transforms = forwardKinematics(proposedJointAngles);
+  const T_j3 = transforms[3]; // J3: elbow pitch
+  const T_tip = transforms[7]; // Tip
+
+  const tipPos = new THREE.Vector3().setFromMatrixPosition(T_tip);
+  const elbowPos = new THREE.Vector3().setFromMatrixPosition(T_j3);
+
+  // Anti-Ground Collision
+  if (tipPos.z < 0.05 || elbowPos.z < 0.05) {
+    const msg = "Safety System Triggered: Prevented stylus from colliding with the floor (Z-Axis restriction).";
+    useStore.getState().addLog({
+      source: 'SYSTEM',
+      type: 'error',
+      message: msg,
+      commandId: _command.id
+    });
+    return {
+      pass: false,
+      reason: 'Z_COLLISION',
+      details: [msg]
+    };
+  }
+
+  // Anti-Self Collision (Base cylinder)
+  const tipRadius = Math.sqrt(tipPos.x * tipPos.x + tipPos.y * tipPos.y);
+  if (tipRadius < 0.1 && tipPos.z < 0.35) {
+    const msg = "Safety System Triggered: Prevented self-collision (Stylus entering Base bounding box).";
+    useStore.getState().addLog({
+      source: 'SYSTEM',
+      type: 'error',
+      message: msg,
+      commandId: _command.id
+    });
+    return {
+      pass: false,
+      reason: 'SELF_COLLISION',
+      details: [msg]
+    };
+  }
   
   return {
     pass: true

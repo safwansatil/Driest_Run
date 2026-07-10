@@ -18,7 +18,8 @@ export function execute(validatedJointAngles: JointState): void {
   const limits = store.urdfLimits;
   const isAuto = fsm.getState() === 'AUTONOMOUS_SEQUENCE' || fsm.getState() === 'AUTONOMOUS_PAUSED';
   
-  let durationSeconds = 0.5;
+  const isJogging = fsm.getState() === 'JOGGING';
+  let durationSeconds = isJogging ? 0.1 : 0.5;
   const keys: (keyof JointState)[] = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6'];
   
   if (isAuto) {
@@ -73,8 +74,8 @@ export function execute(validatedJointAngles: JointState): void {
     const elapsed = time - startTime - accumulatedPauseTime;
     const t = Math.min(elapsed / duration, 1.0);
     
-    // Simple ease-in-out or linear lerp
-    const easeT = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; 
+    // Simple ease-in-out or linear lerp (linear for jogging to prevent ease-in stalling)
+    const easeT = isJogging ? t : (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
 
     const newJoints = { ...startJoints };
     let keys: (keyof JointState)[] = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6'];
