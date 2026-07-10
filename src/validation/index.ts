@@ -88,6 +88,29 @@ export function validate(_command: ArmCommand, proposedJointAngles: JointState):
       details
     };
   }
+
+  // 2. Reachability / Workspace envelope check (Real checks for target Cartesian coordinates)
+  if (_command.target) {
+    const { x, y, z } = _command.target;
+    const dist = Math.sqrt(x * x + y * y + z * z);
+    if (dist > 1.19) {
+      return {
+        pass: false,
+        reason: 'UNREACHABLE_TARGET',
+        details: [`Target distance ${dist.toFixed(3)}m is outside the maximum reach of 1.19m`],
+      };
+    }
+    if (z < 0) {
+      return {
+        pass: false,
+        reason: 'OUT_OF_BOUNDS',
+        details: [`Target Z coordinate ${z.toFixed(3)}m is below ground limit (0.0m)`],
+      };
+    }
+  }
+
+  // 3. Velocity / Accel bounds check (Stub)
+  // TODO: Determine if transition from current to proposed violates velocity max over time dt
   
   // 4. Self-collision check (Stub)
   // TODO: Use capsule distance math between arm links

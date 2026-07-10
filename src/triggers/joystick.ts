@@ -2,9 +2,9 @@ import nipplejs from 'nipplejs';
 import { commandBus } from '../bus/commandBus';
 import { useStore } from '../store';
 
-let leftManager: nipplejs.JoystickManager | null = null;
-let rightManager: nipplejs.JoystickManager | null = null;
-let speedManager: nipplejs.JoystickManager | null = null;
+let leftManager: any = null;
+let rightManager: any = null;
+let speedManager: any = null;
 let rotationIntervalRef: number | null = null;
 
 export function initDualJoystickGUI(
@@ -134,7 +134,7 @@ export function initDualJoystickGUI(
 
       const { activeJoint, stepSize } = state;
       console.log(`[Joystick] Emitting setJoint for joint_${activeJoint} with delta ${currentDirection * stepSize}`);
-      commandBus.dispatch({
+      commandBus.submit({
         id: crypto.randomUUID(),
         timestamp: Date.now(),
         source: 'joystick',

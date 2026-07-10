@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '../store';
 import { NativeJoystick } from './NativeJoystick';
 import { commandBus } from '../bus/commandBus';
 import { runPinSequence, type SequenceStatus } from '../triggers/autonomous';
 import { fsm } from '../fsm';
+import TypedCommandInput from '../triggers/voice/TypedCommandInput';
+import { voiceTrigger, type VoiceState } from '../triggers/voice/voiceTrigger';
 
 const JoystickControls = () => {
   const { rpm, setRpm, activeJoint, setActiveJoint } = useStore();
@@ -17,7 +19,7 @@ const JoystickControls = () => {
 
   // Handle Y-axis (Toggle Joint)
   const lastToggleRef = useRef(0);
-  const handleToggleMove = (x: number, y: number) => {
+  const handleToggleMove = (_x: number, y: number) => {
     const now = Date.now();
     if (Math.abs(y) > 0.5 && now - lastToggleRef.current > 300) {
       let next = activeJointRef.current + (y > 0 ? -1 : 1);
@@ -30,7 +32,7 @@ const JoystickControls = () => {
 
   // Handle Speed Stick
   const speedIntervalRef = useRef<number | null>(null);
-  const handleSpeedMove = (x: number, y: number) => {
+  const handleSpeedMove = (_x: number, y: number) => {
     if (Math.abs(y) > 0.1) {
       if (speedIntervalRef.current === null) {
         speedIntervalRef.current = window.setInterval(() => {
@@ -55,7 +57,7 @@ const JoystickControls = () => {
   const rotationDirRef = useRef(0);
   const rotationIntervalRef = useRef<number | null>(null);
 
-  const handleRotateMove = (x: number, y: number) => {
+  const handleRotateMove = (x: number, _y: number) => {
     if (x > 0.3) rotationDirRef.current = 1;
     else if (x < -0.3) rotationDirRef.current = -1;
     else rotationDirRef.current = 0;
@@ -65,7 +67,7 @@ const JoystickControls = () => {
         const state = useStore.getState();
         if (state.isEStop || state.mode === 'ERROR' || state.mode === 'EXECUTE') return;
         
-        commandBus.dispatch({
+        commandBus.submit({
           id: crypto.randomUUID(),
           timestamp: Date.now(),
           source: 'joystick',
@@ -129,7 +131,7 @@ export const CommandCenter: React.FC = () => {
   const [isPaused, setIsPaused] = useState(false);
 
   // Voice State
-  const [isListening, setIsListening] = useState(false);
+  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [voiceTranscript, setVoiceTranscript] = useState('');
 
   const isDisabled = mode === 'STOP' || mode === 'ERROR' || mode === 'EXECUTE';
@@ -156,45 +158,36 @@ export const CommandCenter: React.FC = () => {
 
   // --- Mode 3: Voice ---
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript.toLowerCase();
-      setVoiceTranscript(transcript);
-      addLog({ source: 'voice', type: 'info', message: `Recognized: "${transcript}"` });
-      
-      let delta = { x: 0, y: 0, z: 0 };
-      if (transcript.includes('up')) delta.z = 0.05;
-      if (transcript.includes('down')) delta.z = -0.05;
-      if (transcript.includes('left')) delta.y = 0.05;
-      if (transcript.includes('right')) delta.y = -0.05;
-      if (transcript.includes('forward')) delta.x = 0.05;
-      if (transcript.includes('back')) delta.x = -0.05;
-
-      if (delta.x !== 0 || delta.y !== 0 || delta.z !== 0) {
-        setActiveCommand({
-          id: crypto.randomUUID(),
-          timestamp: Date.now(),
-          source: 'voice',
-          type: 'jog',
-          delta
-        });
+    const unsubTranscript = voiceTrigger.onTranscript((_partial, final) => {
+      if (final) {
+        setVoiceTranscript(final);
+        addLog({ source: 'voice', type: 'info', message: `Recognized: "${final}"` });
       }
+    });
+
+    const unsubState = voiceTrigger.onState((state: VoiceState) => {
+      setVoiceState(state);
+    });
+
+    const unsubRejection = voiceTrigger.onRejection((rejection) => {
+      addLog({ source: 'voice', type: 'error', message: `Rejected: ${rejection.reason} (${rejection.raw})` });
+    });
+
+    return () => {
+      unsubTranscript();
+      unsubState();
+      unsubRejection();
     };
+  }, [addLog]);
 
-    if (isListening && !isDisabled) {
-      recognition.start();
+  const toggleVoice = useCallback(() => {
+    if (voiceState === 'transcribing') return;
+    if (voiceState === 'listening') {
+      voiceTrigger.stopVoice();
+    } else {
+      voiceTrigger.startVoice();
     }
-
-    return () => { recognition.stop(); };
-  }, [isListening, isDisabled, setActiveCommand, addLog]);
+  }, [voiceState]);
 
   return (
     <div className="glass-panel" style={{ width: '100%', display: 'flex', flexDirection: 'column', zIndex: 10, boxSizing: 'border-box' }}>
@@ -207,6 +200,7 @@ export const CommandCenter: React.FC = () => {
           {controlMode === 'Keyboard' && <>Keyboard</>}
           {controlMode === 'VOICE' && <>Voice Control</>}
           {controlMode === 'PIN' && <>Auto / PIN</>}
+          {controlMode === 'AGENTIC' && <>Agentic</>}
         </h2>
         <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ width: '32px', height: '32px', padding: 0, background: 'transparent', border: 'none', fontWeight: 'bold', fontSize: '1.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
           ☰
@@ -239,6 +233,11 @@ export const CommandCenter: React.FC = () => {
             onClick={() => { setControlMode('PIN'); setIsMenuOpen(false); }}
             style={{ padding: '1rem', background: controlMode === 'PIN' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'PIN' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >Auto / PIN</button>
+          
+          <button 
+            onClick={() => { setControlMode('AGENTIC'); setIsMenuOpen(false); }}
+            style={{ padding: '1rem', background: controlMode === 'AGENTIC' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'AGENTIC' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >Agentic</button>
         </div>
       )}
 
@@ -246,28 +245,7 @@ export const CommandCenter: React.FC = () => {
         
         {/* JOYSTICK MODE */}
         {controlMode === 'JOYSTICK' && (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '0.9rem', color: '#111' }}>Cartesian Jogging</h3>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginTop: '0.5rem' }}>
-              <div style={{ flex: 1, height: '160px', background: 'rgba(255,255,255,0.8)', borderRadius: '12px', position: 'relative', border: '1px solid #ddd', boxSizing: 'border-box' }} ref={joystickRef}>
-                {/* NippleJS mounts here */}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(255,255,255,0.8)', padding: '1rem 0.5rem', borderRadius: '12px', height: '160px', border: '1px solid #ddd', boxSizing: 'border-box' }}>
-                <input 
-                  type="range" 
-                  min="-0.05" max="0.05" step="0.01" defaultValue="0"
-                  ref={zSliderRef}
-                  onMouseUp={(e) => (e.target as HTMLInputElement).value = "0"}
-                  onTouchEnd={(e) => (e.target as HTMLInputElement).value = "0"}
-                  style={{ writingMode: 'vertical-lr', direction: 'rtl', flex: 1, margin: 0, cursor: 'pointer' }} 
-                />
-              </div>
-            </div>
-            <div style={{ fontSize: '0.75rem', color: '#666', textAlign: 'center' }}>Drag joystick for X/Y planar translation. Slider for Z.</div>
-          </>
+          <JoystickControls />
         )}
 
         {/* MOUSE MODE */}
@@ -306,7 +284,7 @@ export const CommandCenter: React.FC = () => {
 
         {/* Keyboard MODE */}
         {controlMode === 'Keyboard' && (
-          <div style={{ textAlign: 'center', padding: '2rem 0', color: '#555' }}>
+          <div style={{ textAlign: 'center', padding: '0.5rem 0', color: '#555' }}>
 
             <p style={{ margin: 0, fontWeight: 'bold' }}>Keyboard Control Active</p>
             <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>Press <b>1-6</b> to select a joint.<br/>Press <b>A / D</b> to rotate.</p>
@@ -451,18 +429,37 @@ export const CommandCenter: React.FC = () => {
         {controlMode === 'VOICE' && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '0.5rem 0' }}>
             <button 
-              onClick={() => setIsListening(!isListening)}
+              onClick={toggleVoice}
+              disabled={voiceState === 'transcribing'}
+              className={
+                voiceState === 'listening' 
+                  ? 'pulse-listening' 
+                  : (voiceState === 'transcribing' ? 'pulse-transcribing' : '')
+              }
               style={{
                 width: '120px', height: '120px', borderRadius: '50%',
-                background: isListening ? 'rgba(255,51,51,0.1)' : 'rgba(0,102,204,0.05)',
-                border: `2px solid ${isListening ? '#cc0000' : '#0066cc'}`,
-                color: isListening ? '#cc0000' : '#0066cc',
+                background: voiceState === 'listening' 
+                  ? 'rgba(255,51,51,0.1)' 
+                  : (voiceState === 'transcribing' ? 'rgba(234,179,8,0.1)' : 'rgba(0,102,204,0.05)'),
+                border: `2px solid ${
+                  voiceState === 'listening' 
+                    ? '#cc0000' 
+                    : (voiceState === 'transcribing' ? '#d97706' : '#0066cc')
+                }`,
+                color: voiceState === 'listening' 
+                  ? '#cc0000' 
+                  : (voiceState === 'transcribing' ? '#d97706' : '#0066cc'),
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                boxShadow: isListening ? '0 0 30px rgba(255,51,51,0.2)' : 'none',
-                transition: 'all 0.3s'
+                boxShadow: voiceState === 'listening' ? '0 0 30px rgba(255,51,51,0.2)' : 'none',
+                transition: 'all 0.3s',
+                cursor: voiceState === 'transcribing' ? 'not-allowed' : 'pointer'
               }}
             >
-              <span style={{ fontWeight: 'bold' }}>{isListening ? 'LISTENING' : 'TAP TO SPEAK'}</span>
+              <span style={{ fontWeight: 'bold' }}>
+                {voiceState === 'listening' && 'LISTENING'}
+                {voiceState === 'transcribing' && 'TRANSCRIBING...'}
+                {voiceState !== 'listening' && voiceState !== 'transcribing' && 'TAP TO SPEAK'}
+              </span>
               <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '24px', justifyContent: 'center', marginTop: '0.5rem' }}>
                 {[
                   { h: '60%', d: '0s' },
@@ -475,10 +472,10 @@ export const CommandCenter: React.FC = () => {
                     key={i} 
                     style={{ 
                       width: '4px', 
-                      background: isListening ? '#cc0000' : '#ccc', 
-                      height: isListening ? '20%' : '20%',
+                      background: voiceState === 'listening' ? '#cc0000' : '#ccc', 
+                      height: voiceState === 'listening' ? '20%' : '20%',
                       borderRadius: '2px',
-                      animation: isListening ? `sound-bounce-${i} 0.5s ease-in-out infinite alternate ${bar.d}` : 'none',
+                      animation: voiceState === 'listening' ? `sound-bounce-${i} 0.5s ease-in-out infinite alternate ${bar.d}` : 'none',
                       transition: 'background 0.3s'
                     }} 
                   />
@@ -492,6 +489,13 @@ export const CommandCenter: React.FC = () => {
                 {voiceTranscript || 'Waiting for voice command...'}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* AGENTIC MODE */}
+        {controlMode === 'AGENTIC' && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0' }}>
+            <TypedCommandInput />
           </div>
         )}
 

@@ -26,7 +26,7 @@ export function initKeyboardTrigger(): () => void {
       const { activeJoint, stepSize } = state;
       const direction = e.code === 'KeyA' ? -1 : 1;
       
-      commandBus.dispatch({
+      commandBus.submit({
         id: crypto.randomUUID(),
         timestamp: Date.now(),
         source: 'keyboard',

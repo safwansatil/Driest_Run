@@ -26,7 +26,7 @@ export function initMouseTrigger(canvasElement: HTMLCanvasElement): () => void {
       }
       
       const { activeJoint, stepSize } = state;
-      commandBus.dispatch({
+      commandBus.submit({
         id: crypto.randomUUID(),
         timestamp: Date.now(),
         source: 'dashboard',

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { voiceTrigger } from './voiceTrigger';
 
-type VoiceState = 'listening' | 'idle' | 'error' | 'unsupported';
+type VoiceState = 'listening' | 'transcribing' | 'idle' | 'error' | 'unsupported';
 
 interface Rejection {
   reason: string;
@@ -19,6 +19,14 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
   const [transcripts, setTranscripts] = useState<{ partial: string; final: string }[]>([]);
   const [rejection, setRejection] = useState<Rejection | null>(null);
   const [state, setState] = useState<VoiceState>('idle');
+  const [volume, setVolume] = useState(0);
+  const [apiKey, setApiKey] = useState(() => {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('openai_api_key') || '';
+    }
+    return '';
+  });
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const rejectionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transcriptEndRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +57,6 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
     const unsubTranscript = voiceTrigger.onTranscript((partial, final) => {
       setTranscripts((prev) => {
         const next = [...prev];
-        if (partial) next.push({ partial, final: '' });
         if (final) next.push({ partial: '', final });
         return next.slice(-50);
       });
@@ -69,13 +76,19 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
     const unsubState = voiceTrigger.onState((s) => {
       setState(s);
       setListening(s === 'listening');
+      if (s !== 'listening') setVolume(0);
       onStateRef.current?.(s);
+    });
+
+    const unsubVolume = voiceTrigger.onVolume((vol) => {
+      setVolume(vol);
     });
 
     return () => {
       unsubTranscript();
       unsubRejection();
       unsubState();
+      unsubVolume();
       clearRejectionTimer();
     };
   }, [clearRejectionTimer]);
@@ -87,6 +100,14 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
       voiceTrigger.startVoice();
     }
   }, [listening]);
+
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setApiKey(value);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('openai_api_key', value);
+    }
+  };
 
   return (
     <div
@@ -105,14 +126,14 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <button
           onClick={toggle}
-          disabled={state === 'unsupported'}
+          disabled={state === 'unsupported' || state === 'transcribing'}
           style={{
-            background: listening ? '#ef4444' : '#22c55e',
+            background: state === 'transcribing' ? '#eab308' : (listening ? '#ef4444' : '#22c55e'),
             border: 'none',
             borderRadius: '50%',
             width: '40px',
             height: '40px',
-            cursor: state === 'unsupported' ? 'not-allowed' : 'pointer',
+            cursor: (state === 'unsupported' || state === 'transcribing') ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -120,9 +141,9 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
             fontSize: '18px',
             flexShrink: 0,
           }}
-          title={listening ? 'Stop voice' : 'Start voice'}
+          title={state === 'transcribing' ? 'Transcribing...' : (listening ? 'Stop voice' : 'Start voice')}
         >
-          {listening ? '■' : '🎤'}
+          {state === 'transcribing' ? '⏳' : (listening ? '■' : '🎤')}
         </button>
         <span
           style={{
@@ -133,11 +154,74 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
         >
           {state.toUpperCase()}
         </span>
+        {state === 'listening' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '14px', flex: 1, marginLeft: '4px' }}>
+            {[1, 2, 3, 4, 5].map((barIndex) => {
+              const scale = 0.2 + volume * 1.8;
+              const height = Math.min(100, Math.max(15, barIndex * 15 * scale));
+              return (
+                <div
+                  key={barIndex}
+                  style={{
+                    width: '3px',
+                    height: `${height}%`,
+                    background: '#22c55e',
+                    borderRadius: '2px',
+                    transition: 'height 0.05s ease',
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
+        <button
+          onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+          style={{
+            background: 'rgba(255,255,255,0.1)',
+            border: '1px solid rgba(255,255,255,0.2)',
+            borderRadius: '4px',
+            padding: '4px 8px',
+            color: 'white',
+            fontSize: '11px',
+            cursor: 'pointer',
+            fontFamily: 'monospace',
+            marginLeft: 'auto',
+          }}
+          title="OpenAI API Key"
+        >
+          ⚙
+        </button>
       </div>
+
+      {showApiKeyInput && (
+        <div>
+          <input
+            type="password"
+            value={apiKey}
+            onChange={handleApiKeyChange}
+            placeholder="OpenAI API Key (sk-...)"
+            style={{
+              width: '100%',
+              background: 'rgba(255,255,255,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              borderRadius: '4px',
+              padding: '6px 8px',
+              color: 'white',
+              fontSize: '12px',
+              fontFamily: 'monospace',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+          <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '4px', fontFamily: 'monospace' }}>
+            Stores in browser localStorage. Never exposed server-side.
+          </div>
+        </div>
+      )}
 
       {state === 'unsupported' && (
         <div style={{ color: '#f87171', fontSize: '12px' }}>
-          Speech API not supported in this browser
+          MediaRecorder not supported in this browser
         </div>
       )}
 
@@ -154,7 +238,6 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
         )}
         {transcripts.map((t, i) => (
           <div key={i}>
-            {t.partial && <div style={{ color: '#9ca3af' }}>{t.partial}</div>}
             {t.final && <div style={{ color: '#f3f4f6' }}>{t.final}</div>}
           </div>
         ))}
