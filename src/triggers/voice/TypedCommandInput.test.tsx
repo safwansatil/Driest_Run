@@ -17,7 +17,7 @@ describe('TypedCommandInput', () => {
     cleanup();
   });
 
-  it('dispatches valid utterance with source:"typed" via commandBus.dispatch', async () => {
+  it('dispatches valid utterance with source:"typed" via commandBus.submit', async () => {
     const { default: Component } = await import('./TypedCommandInput');
     render(<Component />);
 

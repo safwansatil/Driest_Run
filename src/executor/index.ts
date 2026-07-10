@@ -21,7 +21,7 @@ export function execute(validatedJointAngles: JointState): void {
   function animate(time: number) {
     if (fsm.getState() === 'STOP' || fsm.getState() === 'ERROR') {
       currentAnimation = null;
-      return; // Stop moving immediately on E-Stop
+      return; // Stop moving immediately on Stop
     }
 
     const elapsed = time - startTime;

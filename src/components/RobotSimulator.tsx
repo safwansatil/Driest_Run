@@ -16,18 +16,26 @@ const RobotSimulator = () => {
   const showGrid = useStore((state) => state.showGrid);
 
   useEffect(() => {
-    // Fetch key config
-    fetch('/key.config.json')
-      .then(res => res.json())
-      .then(data => {
-        const keyArray = Object.entries(data.keys).map(([id, pos]: [string, any]) => ({
-          id,
-          pos: [pos.x, pos.y, pos.z] as [number, number, number]
-        }));
-        setKeys(keyArray);
-      })
-      .catch(err => console.error("Failed to load key config", err));
+    // Hardcoded key config to avoid Vite caching issues
+    const data = {
+      keys: {
+        "1": { x: 0.5, y: 0.25, z: 0.05 },
+        "2": { x: 0.75, y: 0.25, z: 0.05 },
+        "3": { x: 1.0, y: 0.25, z: 0.05 },
+        "4": { x: 0.5, y: -0.05, z: 0.05 },
+        "5": { x: 0.75, y: -0.05, z: 0.05 },
+        "6": { x: 1.0, y: -0.05, z: 0.05 }
+      }
+    };
+    
+    const keyArray = Object.entries(data.keys).map(([id, pos]: [string, any]) => ({
+      id,
+      pos: [pos.x, pos.y, pos.z] as [number, number, number]
+    }));
+    setKeys(keyArray);
+  }, []);
 
+  useEffect(() => {
     try {
       const loader = new URDFLoader();
       loader.load('/6_dof_arm.urdf', (urdf: any) => {
@@ -100,13 +108,13 @@ const RobotSimulator = () => {
       <group rotation={[-Math.PI / 2, 0, 0]}>
         {keys.map(key => (
           <group key={key.id} position={key.pos}>
-            <RoundedBox args={[0.04, 0.04, 0.015]} radius={0.005} smoothness={4} castShadow receiveShadow>
+            <RoundedBox args={[0.075, 0.075, 0.02]} radius={0.01} smoothness={4} castShadow receiveShadow>
               <meshStandardMaterial color="#111111" roughness={0.6} metalness={0.4} />
             </RoundedBox>
             
             <Text 
-              position={[0, 0, 0.008]} 
-              fontSize={0.02} 
+              position={[0, 0, 0.012]} 
+              fontSize={0.04} 
               color="#00ffcc" 
               anchorX="center" 
               anchorY="middle"

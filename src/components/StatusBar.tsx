@@ -10,6 +10,11 @@ const StatusBar: React.FC = () => {
   const setError = useStore((state) => state.setError);
   const showGrid = useStore((state) => state.showGrid);
   const setShowGrid = useStore((state) => state.setShowGrid);
+  const controlMode = useStore((state) => state.controlMode);
+  const activeJoint = useStore((state) => state.activeJoint);
+  const cameraMode = useStore((state) => state.cameraMode);
+  const setCameraMode = useStore((state) => state.setCameraMode);
+  const stepSize = useStore((state) => state.stepSize);
   
   const clearError = () => setError(null);
 
@@ -40,6 +45,22 @@ const StatusBar: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#555' }}>
           WS: CONNECTED
         </div>
+        <div style={{ padding: '4px 10px', background: '#f1f5f9', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid #cbd5e1' }}>
+          Input: {controlMode}
+        </div>
+        <div style={{ padding: '4px 10px', background: '#2563eb', color: '#fff', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 800, border: '1px solid #1d4ed8' }}>
+          ACTIVE SERVO: JOINT {activeJoint}
+        </div>
+        {controlMode === 'MOUSE' && (
+          <button 
+             onClick={() => setCameraMode(!cameraMode)}
+             style={{ padding: '4px 10px', background: cameraMode ? '#eab308' : '#f1f5f9', color: cameraMode ? '#fff' : '#111', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid #cbd5e1', cursor: 'pointer' }}>
+            {cameraMode ? 'CAMERA PAN: ON' : 'CAMERA PAN: OFF'}
+          </button>
+        )}
+        <div style={{ padding: '4px 10px', background: '#f1f5f9', borderRadius: '4px', fontSize: '0.85rem', fontWeight: 600, border: '1px solid #cbd5e1' }}>
+          Step: {stepSize.toFixed(2)}
+        </div>
       </div>
 
       {/* Center: Status Badge */}
@@ -69,7 +90,7 @@ const StatusBar: React.FC = () => {
         )}
       </div>
 
-      {/* Right: Grid Toggle & E-STOP */}
+      {/* Right: Grid Toggle & Stop */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
         
         {/* Grid Toggle */}
@@ -94,22 +115,22 @@ const StatusBar: React.FC = () => {
           </div>
         </div>
 
-        {/* E-STOP */}
+        {/* Stop */}
         <button 
           onClick={mode === 'STOP' ? resetEStop : triggerEStop}
           style={{
-            height: '40px', padding: '0 2rem',
-            background: mode === 'STOP' ? '#ffcc00' : '#ff3333',
+            height: '32px', padding: '0 1.5rem',
+            background: mode === 'STOP' ? '#ffcc00' : '#b30000',
             color: mode === 'STOP' ? '#000' : '#fff',
-            border: 'none', borderRadius: '4px',
-            fontWeight: 900, fontSize: '1.1rem', letterSpacing: '1px',
+            border: 'none', borderRadius: '20px',
+            fontWeight: 800, fontSize: '0.95rem', letterSpacing: '1px',
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-            boxShadow: `0 0 15px ${mode === 'STOP' ? '#ffcc00' : '#ff3333'}60`,
+            boxShadow: `0 0 15px ${mode === 'STOP' ? '#ffcc00' : '#b30000'}60`,
             transition: 'all 0.2s'
           }}
         >
 
-          {mode === 'STOP' ? 'RESET STOP' : 'E-STOP'}
+          {mode === 'STOP' ? 'RESET STOP' : 'Stop'}
         </button>
       </div>
 

@@ -34,6 +34,7 @@ const TypedCommandInput = () => {
     setHistory((prev) => [
       { verdict: verdict as 'accepted' | 'rejected', type: result.type, raw: trimmed },
       ...prev,
+
     ].slice(0, 3));
     setText('');
   }, [text]);

@@ -2,7 +2,16 @@
 
 > Your scope: Phase 3 (Voice) + Optional Agent. Teammate owns Phase 4 (PIN, press choreography) and the Logging/Report module. Voice/typed/agent all emit commands to the shared bus — teammate's code executes and audits. Do not build the executor or PIN UI yourself.
 
+<<<<<<< HEAD
+Browser-based digital twin of Vantage's `stylus_arm` (7 actuated revolute
+joints: `joint_1..joint_6` + `stylus_pitch`, i.e. 6-DOF arm + 1 redundant
+wrist DOF). One motion pipeline, five trigger surfaces (dashboard read-out,
+GUI joystick, keyboard, deterministic voice, Autonomous Movement), plus an
+optional agentic voice extension. No physical hardware — everything must be
+provable and trustworthy in simulation before it's allowed near a real arm.
+=======
 Repo: `safwansatil/Driest_Run` (React + Vite + TS). Follow `AGENTS.md` strictly: `triggers/ → bus/ → fsm/ → kinematics/ → validation/ → executor/ → audit/`. Only the executor mutates joint state.
+>>>>>>> 705dc6ca0440e41e6b0557e9582601daa775e537
 
 **Before feeding these prompts:** confirm `src/types/commands.ts` (`ArmCommand`, `Rejection`, `Trajectory`, `JointState`), `commandBus`, FSM, DLS IK solver, and the 6-stage validation gate (S0–S6, with `FREEZE_STYLUS_PITCH=true`) already exist and pass fuzz tests. Every new trigger goes through the gate — no bypass.
 
@@ -73,6 +82,28 @@ Add a TypedCommandInput.tsx sibling in src/triggers/voice/:
 This MUST reuse grammar.ts unchanged — do not fork the parser. This is the demo-safety fallback if the mic fails on stage.
 ```
 
+<<<<<<< HEAD
+| # | Milestone | Rubric tie-in | Exit criteria |
+|---|-----------|---------------|----------------|
+| M0 | Repo scaffold, command schema frozen, URDF loads in Three.js via `urdf-loader` | Visualization (15%) | Arm renders with correct joint tree; joint sliders in a debug panel move the real URDF joints |
+| M1 | Live dashboard: joint angles + FK end-effector pose, updating every tick; 6-key panel rendered from `key.config.json` | Visualization (15%) | Panel boxes sit at the exact coordinates in the config, labeled 1–6 |
+| M2 | Layer 0–1 scaffolding: command bus + state machine, no-op executor | Architecture (15%) | Can log a fake command through IDLE→JOGGING→IDLE with correct rejects when EXECUTING |
+| M3 | IK solver (damped least-squares Jacobian, null-space use of `stylus_pitch` to hold approach = -z) | Inverse Kinematics (15%) | Converges to <2mm tip error within a fixed iteration budget for all 6 key positions; logs error + iteration count |
+| M4 | Safety Gate: reachability (precomputed workspace envelope), post-IK joint limit check, velocity/accel clamp from URDF `<limit>` tags, simple capsule self-collision | Architecture & Safety (part of 15%) | Out-of-envelope target is rejected with a machine-readable reason, never silently clamped |
+| M5 | Executor: min-jerk trajectory interpolation, drives joints per tick, live dashboard reflects it | IK + Visualization | Smooth motion, no visible joint teleporting, 60fps target |
+| M6 | Joystick GUI + keyboard jog, both emitting `jog` commands only | Manual Control (10%) | Both feel responsive (<100ms perceived latency), both go through the same gate/executor path |
+| M7 | Deterministic voice control (keyword → command map) | Voice Control (15%) | "move up," "move left," "rotate base 30 degrees" reliably map to correct `jog`/`setJoint` commands |
+| M8 | Autonomous Movement: per digit → hover above key → descend → confirm within ±5mm tolerance → retract → next digit | Autonomous Movement (20%) — highest single weight, prioritize accordingly | 6-digit PIN completes unattended, session log shows per-key success/fail |
+| M9 | Session log / audit report generator (pass/fail summary for judges) | Architecture & Presentation | One-click exportable report: source, target, verdict, IK error, final tip error, per command |
+| M10 | Electrical schematic (PoC): power stage, MCU, servo driver, Wi-Fi link, pin-mapping table | Electrical Schematic (5%) | Logically consistent, labeled, buildable from the diagram alone |
+| M11 (bonus) | Agentic voice layer: NL → same Layer 0 schema, gated identically, spoken/text confirmation + failure explanation | Agentic Bonus (+10%) | Never bypasses Layer 2; ambiguous input triggers a clarifying question instead of a guess |
+| M12 | Polish pass: UI/UX consistency, code cleanup, demo script, README | Polish & Presentation (5%) | Demo runs start-to-finish without manual intervention |
+
+Suggested ordering priority if time runs short: **M0→M3→M4→M5→M8** first
+(these cover Visualization + IK + Autonomous Movement = 50% of the
+rubric), then M6/M7 (manual + voice = 25%), then M9/M10/M12, then M11 last
+since it's bonus-only and explicitly optional.
+=======
 ### Prompt 3.4 — Voice → gate integration test
 ```
 Add src/triggers/voice/voice.integration.test.ts (vitest):
@@ -84,6 +115,7 @@ Add src/triggers/voice/voice.integration.test.ts (vitest):
 
 Also add a smoke test: verify VoicePanel renders and the mic toggle button toggles state without a real SpeechRecognition instance (mock the global).
 ```
+>>>>>>> 705dc6ca0440e41e6b0557e9582601daa775e537
 
 ---
 

@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import type { ArmCommand } from '../types/commands';
 import { fsm } from '../fsm';
 import { solveIK, getEndEffectorPose } from '../kinematics';
@@ -20,12 +21,13 @@ async function loadKeyConfig(): Promise<Record<string, { x: number; y: number; z
 class CommandBus {
   public async submit(command: ArmCommand): Promise<string> {
     if (!fsm.canAccept(command)) {
+      const reason = 'FSM_REJECTED';
       auditLog.append({
         id: crypto.randomUUID(),
         timestamp: Date.now(),
         command,
         verdict: 'REJECTED',
-        reason: 'FSM_REJECTED'
+        reason
       });
       return 'REJECTED';
     }
@@ -106,14 +108,40 @@ class CommandBus {
       const ikResult = solveIK(command.target, currentJoints);
       proposedJoints = ikResult.jointAngles;
       ikError = ikResult.error;
+      
+      if (ikError > 0.8) {
+        const reason = `IK_FAILED_TO_CONVERGE (Error: ${ikError.toFixed(4)})`;
+        auditLog.append({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          command,
+          verdict: 'REJECTED',
+          reason,
+          ikError
+        });
+        useStore.getState().setError(`Command Rejected: Target unreachable / IK Failed`);
+        return;
+      }
     } else if (command.type === 'jog' && command.delta) {
       const currentJoints = useStore.getState().joints;
       const currentPose = getEndEffectorPose(currentJoints);
-      const target = {
+      const targetPos = {
         x: currentPose.x + (command.delta.x || 0),
         y: currentPose.y + (command.delta.y || 0),
         z: currentPose.z + (command.delta.z || 0)
       };
+      
+      let targetQuatArray: [number, number, number, number] | undefined = undefined;
+      
+      if ((command.delta.rx || command.delta.ry || command.delta.rz) && currentPose.quat) {
+         const q = currentPose.quat.clone();
+         const euler = new THREE.Euler(command.delta.rx || 0, command.delta.ry || 0, command.delta.rz || 0, 'XYZ');
+         const dq = new THREE.Quaternion().setFromEuler(euler);
+         q.multiply(dq);
+         targetQuatArray = [q.x, q.y, q.z, q.w];
+      }
+
+      const target = { ...targetPos, quat: targetQuatArray };
       const ikResult = solveIK(target, currentJoints);
       proposedJoints = ikResult.jointAngles;
       ikError = ikResult.error;
