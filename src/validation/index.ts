@@ -116,14 +116,15 @@ export function validate(_command: ArmCommand, proposedJointAngles: JointState):
   
   // 4. Anti-Ground Collision (Z-Axis) & Anti-Self Collision
   const transforms = forwardKinematics(proposedJointAngles);
-  const T_j3 = transforms[3]; // J3: elbow pitch
-  const T_tip = transforms[7]; // Tip
+  const T_tip = transforms[7]; // Stylus tip
 
   const tipPos = new THREE.Vector3().setFromMatrixPosition(T_tip);
-  const elbowPos = new THREE.Vector3().setFromMatrixPosition(T_j3);
 
-  // Anti-Ground Collision
-  if (tipPos.z < 0.05 || elbowPos.z < 0.05) {
+  // Anti-Ground Collision: only the stylus tip can physically hit the floor/keyboard.
+  // The elbow is a rigid upper-arm link that swings through the air when reaching
+  // forward — checking elbow.z caused false Z_COLLISION on all keyboard press commands.
+  // Ground plane is z=0; keys sit at z=0.05 so use a small epsilon of 0.005 for float safety.
+  if (tipPos.z < 0.005) {
     const msg = "Safety System Triggered: Prevented stylus from colliding with the floor (Z-Axis restriction).";
     useStore.getState().addLog({
       source: 'SYSTEM',
