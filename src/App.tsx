@@ -10,6 +10,7 @@ import { useStore } from './store';
 import { handleKeyboardInput } from './triggers/keyboard';
 import './index.css';
 
+
 function App() {
   const { isEStop } = useStore();
 
@@ -68,7 +69,7 @@ function App() {
         {/* Right Side: Telemetry & Schematic */}
         <div style={{ pointerEvents: 'auto', marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <TelemetryDashboard />
-          <ElectricalSchematic />
+
         </div>
         
       </div>
