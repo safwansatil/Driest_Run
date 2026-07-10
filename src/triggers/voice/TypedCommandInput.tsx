@@ -127,7 +127,7 @@ const TypedCommandInput = () => {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a command..."
+            placeholder="Type a command (e.g., jog joint 1 by 10 degrees)..."
             style={{
               flex: 1,
               background: 'white',

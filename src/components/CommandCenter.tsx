@@ -3,6 +3,8 @@ import { useStore } from '../store';
 import { NativeJoystick } from './NativeJoystick';
 import { commandBus } from '../bus/commandBus';
 import TypedCommandInput from '../triggers/voice/TypedCommandInput';
+import { voiceTrigger, type VoiceState } from '../triggers/voice/voiceTrigger';
+
 const JoystickControls = () => {
   const { rpm, setRpm, activeJoint, setActiveJoint } = useStore();
   const rpmRef = useRef(rpm);
