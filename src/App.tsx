@@ -4,6 +4,7 @@ import { OrbitControls } from '@react-three/drei';
 import RobotSimulator from './components/RobotSimulator';
 import ControlPanel from './components/ControlPanel';
 import VoicePanel from './triggers/voice/VoicePanel';
+import { TypedCommandInput } from './triggers/voice/TypedCommandInput';
 import AuditLog from './components/AuditLog';
 import TelemetryDashboard from './components/TelemetryDashboard';
 import ElectricalSchematic from './components/ElectricalSchematic';
@@ -62,6 +63,7 @@ function App() {
           <h1 style={{ margin: 0, fontSize: '1.8rem', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>Vantage Control Suite</h1>
           <ControlPanel />
           <VoicePanel />
+          <TypedCommandInput />
           <div style={{ flex: 1, minHeight: 0 }}>
              <AuditLog />
           </div>
