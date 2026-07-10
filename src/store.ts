@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { JointState, ArmMode, LogEntry, ArmCommand, UrdfLimits } from './types';
 import { commandBus } from './bus/commandBus';
 
+export type ControlMode = 'JOYSTICK' | 'MOUSE' | 'Keyboard' | 'VOICE' | 'PIN' | 'AGENTIC';
+
 // Hardcoded fallback HOME_JOINTS if URDF hasn't loaded
 export const HOME_JOINTS: JointState = {
   joint_1: 0,
@@ -22,6 +24,30 @@ interface AppState {
   mode: ArmMode;
   setMode: (mode: ArmMode) => void;
   
+  controlMode: ControlMode;
+  setControlMode: (mode: ControlMode) => void;
+  
+  showGrid: boolean;
+  setShowGrid: (show: boolean) => void;
+  
+  gizmoMode: 'translate' | 'rotate';
+  setGizmoMode: (mode: 'translate' | 'rotate') => void;
+  
+  activeJoint: number;
+  setActiveJoint: (joint: number) => void;
+  
+  cameraMode: boolean;
+  setCameraMode: (mode: boolean) => void;
+  
+  stepSize: number;
+  setStepSize: (size: number) => void;
+  
+  rpm: number;
+  setRpm: (rpm: number) => void;
+  
+  backendError: string | null;
+  setError: (msg: string | null) => void;
+  
   isEStop: boolean;
   triggerEStop: () => void;
   resetEStop: () => void;
@@ -40,12 +66,36 @@ export const useStore = create<AppState>((set) => ({
   urdfLimits: {},
   setUrdfLimits: (urdfLimits) => set({ urdfLimits }),
 
-  mode: 'IDLE',
+  mode: 'REST',
   setMode: (mode) => set({ mode }),
   
+  controlMode: 'JOYSTICK',
+  setControlMode: (controlMode) => set({ controlMode }),
+  
+  showGrid: true,
+  setShowGrid: (showGrid) => set({ showGrid }),
+  
+  gizmoMode: 'translate',
+  setGizmoMode: (gizmoMode) => set({ gizmoMode }),
+  
+  activeJoint: 1,
+  setActiveJoint: (activeJoint) => set({ activeJoint }),
+  
+  cameraMode: false,
+  setCameraMode: (cameraMode) => set({ cameraMode }),
+  
+  stepSize: 0.05,
+  setStepSize: (stepSize) => set({ stepSize }),
+  
+  rpm: 20,
+  setRpm: (rpm) => set({ rpm, stepSize: (rpm * 2 * Math.PI / 60) * 0.1 }),
+  
+  backendError: null,
+  setError: (backendError) => set({ backendError, mode: backendError ? 'ERROR' : 'REST' }),
+  
   isEStop: false,
-  triggerEStop: () => set({ isEStop: true, mode: 'ESTOPPED', activeCommand: null }),
-  resetEStop: () => set({ isEStop: false, mode: 'IDLE' }),
+  triggerEStop: () => set({ isEStop: true, mode: 'STOP', activeCommand: null }),
+  resetEStop: () => set({ isEStop: false, mode: 'REST', backendError: null }),
   
   logs: [],
   addLog: (logInfo) => set((state) => ({
@@ -53,10 +103,10 @@ export const useStore = create<AppState>((set) => ({
   })),
   
   activeCommand: null,
-  setActiveCommand: (cmd) => {
+  setActiveCommand: async (cmd) => {
     set({ activeCommand: cmd });
     if (cmd) {
-      commandBus.submit(cmd);
+      await commandBus.submit(cmd);
     }
   },
 }));

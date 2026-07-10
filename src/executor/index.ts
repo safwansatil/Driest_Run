@@ -1,13 +1,102 @@
 import type { JointState } from '../types';
 import { useStore } from '../store';
 
+import { fsm } from '../fsm';
+
 // This module is the ONLY place allowed to mutate the live joint state of the arm.
 
+let currentAnimation: number | null = null;
+
 export function execute(validatedJointAngles: JointState): void {
-  // Currently a stub that snaps directly to the target.
-  // TODO: Implement trajectory interpolation (e.g., lerp) over time 
-  // to smoothly move from current joints to target joints based on velocity limits.
+  const store = useStore.getState();
+  const startJoints = { ...store.joints };
   
-  // Actually update the store which drives the 3D visualization.
-  useStore.getState().setJoints(validatedJointAngles);
+  if (currentAnimation !== null) {
+    cancelAnimationFrame(currentAnimation);
+  }
+
+  const limits = store.urdfLimits;
+  const isAuto = fsm.getState() === 'AUTONOMOUS_SEQUENCE' || fsm.getState() === 'AUTONOMOUS_PAUSED';
+  
+  let durationSeconds = 0.5;
+  const keys: (keyof JointState)[] = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6'];
+  
+  if (isAuto) {
+    const rpm = store.rpm > 0 ? store.rpm : 140;
+    const radPerSec = (rpm * 2 * Math.PI) / 60;
+    for (const key of keys) {
+      const val = validatedJointAngles[key];
+      if (val !== undefined) {
+        const reqTime = Math.abs(val - startJoints[key]) / radPerSec;
+        if (reqTime > durationSeconds) {
+          durationSeconds = reqTime + 0.05;
+        }
+      }
+    }
+  } else {
+    for (const key of keys) {
+      const val = validatedJointAngles[key];
+      const limit = limits[key];
+      if (val !== undefined && limit && limit.velocity) {
+        const reqTime = Math.abs(val - startJoints[key]) / limit.velocity;
+        if (reqTime > durationSeconds) {
+          durationSeconds = reqTime + 0.05;
+        }
+      }
+    }
+  }
+
+  const duration = durationSeconds * 1000;
+  let startTime = performance.now();
+  let accumulatedPauseTime = 0;
+  let lastPauseTime: number | null = null;
+
+  function animate(time: number) {
+    if (fsm.getState() === 'STOP' || fsm.getState() === 'ERROR' || fsm.getState() === 'REST') {
+      currentAnimation = null;
+      return; // Stop moving immediately on Stop/Reset
+    }
+
+    if (fsm.getState() === 'AUTONOMOUS_PAUSED') {
+      if (lastPauseTime === null) {
+        lastPauseTime = time;
+      }
+      currentAnimation = requestAnimationFrame(animate);
+      return; // Freeze the animation
+    }
+
+    if (lastPauseTime !== null) {
+      accumulatedPauseTime += (time - lastPauseTime);
+      lastPauseTime = null;
+    }
+
+    const elapsed = time - startTime - accumulatedPauseTime;
+    const t = Math.min(elapsed / duration, 1.0);
+    
+    // Simple ease-in-out or linear lerp
+    const easeT = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; 
+
+    const newJoints = { ...startJoints };
+    let keys: (keyof JointState)[] = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6'];
+    
+    for (const key of keys) {
+      if (validatedJointAngles[key] !== undefined) {
+         newJoints[key] = startJoints[key] + (validatedJointAngles[key] - startJoints[key]) * easeT;
+      }
+    }
+
+    useStore.getState().setJoints(newJoints);
+
+    if (t < 1.0) {
+      currentAnimation = requestAnimationFrame(animate);
+    } else {
+      currentAnimation = null;
+      // Movement complete, transition back to REST
+      if (fsm.getState() === 'EXECUTE' || fsm.getState() === 'JOGGING') {
+         fsm.transitionTo('REST');
+      }
+    }
+  }
+
+  currentAnimation = requestAnimationFrame(animate);
 }

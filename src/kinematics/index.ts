@@ -14,6 +14,7 @@ export interface CartesianPose {
   nx: number;
   ny: number;
   nz: number;
+  quat?: THREE.Quaternion;
 }
 
 export interface JointLimit {
@@ -36,20 +37,23 @@ export function parseUrdfLimits(): Record<string, JointLimit> {
     joint_4: { min: -3.14, max: 3.14, velocity: 3.5 },
     joint_5: { min: -1.57, max: 1.57, velocity: 4.0 },
     joint_6: { min: -3.14, max: 3.14, velocity: 4.5 },
-    stylus_pitch: { min: -1.0, max: 1.0, velocity: 5.0 },
   };
 }
 
 export function solveIK(
-  target: { x: number; y: number; z: number; approach?: [number, number, number] },
+  target: { x: number; y: number; z: number; approach?: [number, number, number]; quat?: [number, number, number, number] },
   currentJoints: JointState
 ): IKResult {
   const targetPos = new THREE.Vector3(target.x, target.y, target.z);
   const approach = target.approach || [0, 0, -1];
   const targetDir = new THREE.Vector3(approach[0], approach[1], approach[2]).normalize();
+  let targetQuat = undefined;
+  if (target.quat) {
+    targetQuat = new THREE.Quaternion(target.quat[0], target.quat[1], target.quat[2], target.quat[3]);
+  }
   const limits = parseUrdfLimits();
 
-  const result = realSolveIK(targetPos, targetDir, currentJoints, limits);
+  const result = realSolveIK(targetPos, targetDir, currentJoints, limits, 80, 0.0001, targetQuat);
   return {
     jointAngles: result.joints,
     converged: result.converged,

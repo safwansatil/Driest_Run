@@ -1,192 +1,120 @@
-import { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../store';
-import { Play, Mic, MicOff, AlertOctagon, RefreshCw, Hand, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, MousePointerClick } from 'lucide-react';
+import { Settings, Play, Square, Gauge, Zap } from 'lucide-react';
 
-export default function ControlPanel() {
-  const { joints, urdfLimits, mode, isEStop, triggerEStop, resetEStop, setActiveCommand, addLog } = useStore();
-  const [pin, setPin] = useState('');
-  const [isListening, setIsListening] = useState(false);
+export const ControlPanel: React.FC = () => {
+  const mode = useStore((state) => state.mode);
+  const setMode = useStore((state) => state.setMode);
+  const setJoints = useStore((state) => state.setJoints);
+  const [speed, setSpeed] = useState(1.0);
 
-  // Auto PIN sequence runner
-  const runSequence = async () => {
-    if (isEStop) return;
-    if (pin.length !== 6) {
-      addLog({ source: 'SYSTEM', type: 'warn', message: 'PIN must be 6 digits' });
-      return;
-    }
-
-    addLog({ source: 'SYSTEM', type: 'info', message: `Running sequence: ${pin}` });
-    
-    // For MVP, just queue the first digit. A full sequence would use a generator or state machine.
-    const resp = await fetch('/key.config.json');
-    const config = await resp.json();
-    const keys = config.keys;
-
-    const firstDigit = pin[0];
-    const keyData = keys[firstDigit];
-    if (keyData) {
-      setActiveCommand({
-        id: crypto.randomUUID(),
-        timestamp: Date.now(),
-        source: 'autonomous',
-        type: 'moveTo',
-        target: { x: keyData.x, y: keyData.y, z: keyData.z + 0.01, approach: [0, 0, -1] }
-      });
-      addLog({ source: 'SYSTEM', type: 'info', message: `Moving to key ${firstDigit}` });
-    }
+  const handleSpeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newSpeed = parseFloat(e.target.value);
+    setSpeed(newSpeed);
   };
 
-  // Voice Control
-  useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript.toLowerCase();
-      addLog({ source: 'SYSTEM', type: 'info', message: `Heard: "${transcript}"` });
-      
-      let delta = { x: 0, y: 0, z: 0 };
-      if (transcript.includes('up')) delta.z = 0.05;
-      if (transcript.includes('down')) delta.z = -0.05;
-      if (transcript.includes('left')) delta.y = 0.05;
-      if (transcript.includes('right')) delta.y = -0.05;
-      if (transcript.includes('forward')) delta.x = 0.05;
-      if (transcript.includes('back')) delta.x = -0.05;
-
-      if (delta.x !== 0 || delta.y !== 0 || delta.z !== 0) {
-        setActiveCommand({
-          id: crypto.randomUUID(),
-          timestamp: Date.now(),
-          source: 'voice',
-          type: 'jog',
-          delta
-        });
-      } else {
-         addLog({ source: 'SYSTEM', type: 'warn', message: 'Command not recognized' });
-      }
-    };
-
-    if (isListening) {
-      recognition.start();
-    }
-
-    return () => { recognition.stop(); };
-  }, [isListening, setActiveCommand, addLog]);
-
-  const jog = (dx: number, dy: number, dz: number) => {
-    setActiveCommand({
-      id: crypto.randomUUID(),
-      timestamp: Date.now(),
-      source: 'joystick',
-      type: 'jog',
-      delta: { x: dx, y: dy, z: dz }
-    });
-  };
-  
-  const setJoint = (name: string, value: number) => {
-    setActiveCommand({
-      id: crypto.randomUUID(),
-      timestamp: Date.now(),
-      source: 'dashboard',
-      type: 'setJoint',
-      joint: { name, value }
-    });
+  const handleHome = () => {
+    setJoints({ joint_1: 0, joint_2: 0, joint_3: 0, joint_4: 0, joint_5: 0, joint_6: 0 });
   };
 
   return (
-    <div className="glass-panel" style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem', zIndex: 10 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0, fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <RefreshCw size={20} className={mode === 'EXECUTING' || mode === 'JOGGING' ? 'spin' : ''} /> Control Panel
-        </h2>
-        <div style={{ padding: '4px 8px', borderRadius: '4px', background: isEStop ? 'red' : (mode === 'IDLE' ? 'green' : 'orange'), fontSize: '0.8rem', fontWeight: 'bold' }}>
-          {isEStop ? 'E-STOP' : mode}
-        </div>
+    <div className="glass-panel" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem', zIndex: 10, boxSizing: 'border-box' }}>
+      
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '0.5rem' }}>
+        <Settings size={18} color="#0066cc" />
+        <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#111' }}>System Control</h2>
       </div>
 
-      <button 
-        onClick={isEStop ? resetEStop : triggerEStop}
-        style={{ background: isEStop ? '#ffcc00' : '#ff3333', color: '#000', padding: '1rem', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-      >
-        <AlertOctagon /> {isEStop ? 'RESET E-STOP' : 'EMERGENCY STOP'}
-      </button>
-
-      {/* Manual Joint Sliders */}
-      <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '8px' }}>
-        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#aaa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Hand size={14}/> Joint Control</h3>
-        {Object.keys(urdfLimits).map((key) => {
-          const limit = urdfLimits[key];
-          return (
-            <div key={key} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '4px', fontSize: '0.8rem' }}>
-              <span style={{ width: '70px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{key}</span>
-              <input 
-                type="range" 
-                min={limit.min} 
-                max={limit.max} 
-                step={0.01} 
-                value={joints[key as keyof typeof joints] || 0}
-                onChange={(e) => setJoint(key, parseFloat(e.target.value))}
-                disabled={isEStop}
-                style={{ flex: 1 }}
-              />
-              <span style={{ width: '40px', textAlign: 'right' }}>{(joints[key as keyof typeof joints] || 0).toFixed(2)}</span>
-            </div>
-          );
-        })}
-        {Object.keys(urdfLimits).length === 0 && <div style={{fontSize:'0.8rem', color:'#666'}}>Loading URDF limits...</div>}
-      </div>
-
-      {/* Cartesian Joystick */}
-      <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '8px' }}>
-        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#aaa', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MousePointerClick size={14}/> Cartesian Jog</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px' }}>
-          <button onClick={() => jog(-0.02, 0, 0)} disabled={isEStop}><ArrowLeft size={16}/> -X</button>
-          <button onClick={() => jog(0.02, 0, 0)} disabled={isEStop}>+X <ArrowRight size={16}/></button>
-          <button onClick={() => jog(0, 0, 0.02)} disabled={isEStop}><ArrowUp size={16}/> +Z</button>
-          <button onClick={() => jog(0, -0.02, 0)} disabled={isEStop}>-Y</button>
-          <button onClick={() => jog(0, 0.02, 0)} disabled={isEStop}>+Y</button>
-          <button onClick={() => jog(0, 0, -0.02)} disabled={isEStop}><ArrowDown size={16}/> -Z</button>
-        </div>
-      </div>
-
-      {/* Autonomous / Voice */}
+      {/* Mode Buttons */}
       <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '8px' }}>
-          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#aaa' }}>Auto PIN</h3>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <input 
-              type="text" 
-              maxLength={6} 
-              value={pin} 
-              onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
-              placeholder="123456" 
-              style={{ width: '100%', padding: '4px', background: 'rgba(0,0,0,0.3)', color: 'white', border: '1px solid #444', borderRadius: '4px' }}
-            />
-            <button onClick={runSequence} disabled={isEStop || pin.length !== 6} style={{ padding: '4px', display: 'flex', alignItems: 'center' }}>
-              <Play size={16}/>
-            </button>
-          </div>
-        </div>
+        <button 
+          onClick={() => setMode('REST')}
+          disabled={mode === 'REST'}
+          style={{
+            flex: 1, padding: '0.75rem',
+            background: mode === 'REST' ? '#00ffcc' : 'rgba(0,255,204,0.1)',
+            color: '#111',
+            border: `1px solid ${mode === 'REST' ? '#00ffcc' : '#00cc99'}`,
+            borderRadius: '4px',
+            fontWeight: 'bold',
+            cursor: mode === 'REST' ? 'default' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+            transition: 'all 0.2s'
+          }}
+        >
+          <Square size={16} />
+          STOP
+        </button>
+        <button 
+          onClick={() => setMode('JOGGING')}
+          disabled={mode === 'JOGGING' || mode === 'EXECUTE'}
+          style={{
+            flex: 1, padding: '0.75rem',
+            background: mode === 'JOGGING' || mode === 'EXECUTE' ? '#0066cc' : 'rgba(0,102,204,0.1)',
+            color: mode === 'JOGGING' || mode === 'EXECUTE' ? '#fff' : '#0066cc',
+            border: `1px solid ${mode === 'JOGGING' || mode === 'EXECUTE' ? '#0066cc' : '#0066cc'}`,
+            borderRadius: '4px',
+            fontWeight: 'bold',
+            cursor: (mode === 'JOGGING' || mode === 'EXECUTE') ? 'default' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+            transition: 'all 0.2s'
+          }}
+        >
+          <Play size={16} />
+          ENABLE
+        </button>
+      </div>
 
-        <div style={{ flex: 1, background: 'rgba(0,0,0,0.2)', padding: '0.5rem', borderRadius: '8px' }}>
-          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#aaa' }}>Voice</h3>
-          <button 
-            onClick={() => setIsListening(!isListening)} 
-            disabled={isEStop}
-            style={{ width: '100%', padding: '0.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', background: isListening ? '#cc3333' : '#333' }}
-          >
-            {isListening ? <MicOff size={16}/> : <Mic size={16}/>}
-            {isListening ? 'Stop' : 'Listen'}
-          </button>
+      {/* Speed Control */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.5rem', background: 'rgba(255,255,255,0.6)', borderRadius: '8px', border: '1px solid rgba(0,0,0,0.05)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: '0.8rem', color: '#555', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Gauge size={14} color="#555" />
+            Jog Speed
+          </span>
+          <span style={{ fontSize: '0.8rem', color: '#0066cc', fontWeight: 'bold' }}>{speed.toFixed(2)}x</span>
         </div>
+        <input 
+          type="range"
+          min="0.1"
+          max="3.0"
+          step="0.1"
+          value={speed}
+          onChange={handleSpeedChange}
+          disabled={mode !== 'JOGGING'}
+          style={{
+            width: '100%',
+            accentColor: '#0066cc',
+            opacity: mode !== 'JOGGING' ? 0.5 : 1
+          }}
+        />
+      </div>
+
+      {/* Quick Actions */}
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <button 
+          onClick={handleHome}
+          disabled={mode !== 'JOGGING'}
+          style={{
+            flex: 1, padding: '0.6rem',
+            background: 'rgba(255,204,0,0.15)',
+            color: '#b38f00',
+            border: '1px solid rgba(179,143,0,0.3)',
+            borderRadius: '4px',
+            fontWeight: 'bold',
+            fontSize: '0.8rem',
+            cursor: mode === 'JOGGING' ? 'pointer' : 'not-allowed',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+            transition: 'all 0.2s'
+          }}
+        >
+          <Zap size={14} />
+          GO HOME
+        </button>
       </div>
 
     </div>
   );
-}
+};
+
+export default ControlPanel;

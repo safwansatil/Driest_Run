@@ -19,7 +19,7 @@ The pipeline is a strict, linear progression. Every motion command must follow t
    - **MUST NOT**: Perform math, safety logic, or state mutation itself. It is only a coordinator.
 
 3. **FSM Module (`src/fsm/index.ts`)**
-   - **Responsibility**: Track the current state (IDLE, JOGGING, EXECUTING, ESTOPPED, FAULT) and decide if a new command can be accepted.
+   - **Responsibility**: Track the current state (IDLE, JOGGING, EXECUTING, ESTOPPED, FAULT, AUTONOMOUS_SEQUENCE) and decide if a new command can be accepted.
    - **MUST NOT**: Route commands or calculate angles.
 
 4. **Kinematics Module (`src/kinematics/index.ts`)**
@@ -38,10 +38,29 @@ The pipeline is a strict, linear progression. Every motion command must follow t
    - **Responsibility**: Keep an append-only log of every command, its verdict, and final error. Provide session reports.
 
 ## Command Schema
-The single source of truth for all commands is `src/types/commands.ts`. All triggers must emit commands matching this schema.
+The single source of truth for all commands is `src/types/commands.ts`. All triggers must emit commands matching this strict schema:
+```typescript
+{
+  id: uuid,
+  source: "dashboard" | "joystick" | "keyboard" | "voice" | "agentic" | "autonomous",
+  type: "moveTo" | "jog" | "setJoint",
+  target?: { x, y, z, approach?: [0,0,-1] },
+  delta?: { x, y, z },
+  joint?: { name: string, value?: number, delta?: number },
+  timestamp
+}
+```
+**CRITICAL**: Under no circumstances can a new CommandType be added. All triggers must rely on `moveTo` (absolute IK), `jog` (relative IK), or `setJoint` (direct servo control, allowing a delta property for relative jogging).
 
 ## Naming & Folder Conventions
 To avoid collisions:
 - Keep triggers isolated in `src/triggers/`.
 - Export a clear API from each module's `index.ts`.
 - Use the `ArmCommand` type consistently.
+- Do NOT directly manipulate joint angles in triggers. Triggers must emit `setJoint` with a `delta` property, and the `commandBus` will compute the absolute angles.
+
+## Phase 2 Manual Trigger Mappings
+To maintain consistency, the following trigger mappings have been implemented in `src/triggers/`:
+1. **Keyboard (`src/triggers/keyboard.ts`)**: Keys `1-6` select the active joint. Keys `A` and `D` emit `setJoint` delta commands.
+2. **Mouse (`src/triggers/mouse.ts`)**: Mouse wheel cycles the active joint. Left/Right clicks emit `setJoint` delta commands.
+3. **Dual Joystick (`src/triggers/joystick.ts`)**: Uses two virtual sticks. The left stick (Y-axis) toggles the active joint. The right stick (X-axis) rotates the active servo.

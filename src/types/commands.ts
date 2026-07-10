@@ -1,32 +1,19 @@
-export type CommandSource = 'dashboard' | 'joystick' | 'keyboard' | 'voice' | 'agentic' | 'autonomous';
+export type CommandSource = 'dashboard' | 'joystick' | 'keyboard' | 'voice' | 'agentic' | 'autonomous' | 'typed' | 'agent';
 
-export type CommandType = 'moveTo' | 'jog' | 'setJoint';
+export type CommandType = 'moveTo' | 'jog' | 'setJoint' | 'press_key' | 'enter_pin' | 'rotate_joint' | 'goto' | 'estop';
 
 export interface ArmCommand {
-  id: string; // UUID
+  id: string;
   source: CommandSource;
   type: CommandType;
-  
-  // Used for 'moveTo' commands (absolute cartesian coordinates)
-  target?: {
-    x: number;
-    y: number;
-    z: number;
-    approach?: [number, number, number]; // Vector indicating approach direction, usually [0, 0, -1]
-  };
-  
-  // Used for 'jog' commands (relative cartesian offsets)
-  delta?: {
-    x: number;
-    y: number;
-    z: number;
-  };
-  
-  // Used for 'setJoint' commands (direct joint angle manipulation)
-  joint?: {
-    name: string;
-    value: number; // In radians
-  };
-  
+  target?: { x: number; y: number; z: number; approach?: [number, number, number]; quat?: [number, number, number, number] };
+  targetName?: 'home';
+  delta?: { x: number; y: number; z: number; rx?: number; ry?: number; rz?: number };
+  joint?: { name: string; value?: number; delta?: number };
+  keyIndex?: number;
+  digits?: number[];
+  jointIndex?: number;
+  absRad?: number;
+  deltaRad?: number;
   timestamp: number;
 }

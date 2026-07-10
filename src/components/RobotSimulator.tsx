@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import { Html, RoundedBox, Text } from '@react-three/drei';
 import URDFLoader from 'urdf-loader';
 import * as THREE from 'three';
 import { useStore } from '../store';
@@ -13,19 +13,29 @@ const RobotSimulator = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [keys, setKeys] = useState<{ id: string; pos: [number, number, number] }[]>([]);
 
-  useEffect(() => {
-    // Fetch key config
-    fetch('/key.config.json')
-      .then(res => res.json())
-      .then(data => {
-        const keyArray = Object.entries(data.keys).map(([id, pos]: [string, any]) => ({
-          id,
-          pos: [pos.x, pos.y, pos.z] as [number, number, number]
-        }));
-        setKeys(keyArray);
-      })
-      .catch(err => console.error("Failed to load key config", err));
+  const showGrid = useStore((state) => state.showGrid);
 
+  useEffect(() => {
+    // Hardcoded key config to avoid Vite caching issues
+    const data = {
+      keys: {
+        "1": { "x": 0.5, "y": 0.05, "z": 0.05 },
+        "2": { "x": 0.55, "y": 0.05, "z": 0.05 },
+        "3": { "x": 0.6, "y": 0.05, "z": 0.05 },
+        "4": { "x": 0.5, "y": -0.05, "z": 0.05 },
+        "5": { "x": 0.55, "y": -0.05, "z": 0.05 },
+        "6": { "x": 0.6, "y": -0.05, "z": 0.05 }
+      }
+    };
+    
+    const keyArray = Object.entries(data.keys).map(([id, pos]: [string, any]) => ({
+      id,
+      pos: [pos.x, pos.y, pos.z] as [number, number, number]
+    }));
+    setKeys(keyArray);
+  }, []);
+
+  useEffect(() => {
     try {
       const loader = new URDFLoader();
       loader.load('/6_dof_arm.urdf', (urdf: any) => {
@@ -33,9 +43,9 @@ const RobotSimulator = () => {
           urdf.traverse((child: any) => {
             if (child.isMesh) {
               const isJointHub = child.material?.name === 'amber';
-              const color = isJointHub ? 0xffb732 : 0x111111;
-              const metalness = isJointHub ? 0.4 : 0.8;
-              const roughness = isJointHub ? 0.3 : 0.2;
+              const color = isJointHub ? 0x0066cc : 0xe8e8e8;
+              const metalness = isJointHub ? 0.3 : 0.6;
+              const roughness = isJointHub ? 0.4 : 0.2;
               child.material = new THREE.MeshStandardMaterial({ color, roughness, metalness });
               child.castShadow = true;
               child.receiveShadow = true;
@@ -48,7 +58,7 @@ const RobotSimulator = () => {
           const limits: UrdfLimits = {};
           for (const jointName in urdf.joints) {
              const joint = urdf.joints[jointName];
-             if (joint.limit) {
+             if (joint.limit && jointName !== 'stylus_pitch') {
                 limits[jointName] = { 
                   min: joint.limit.lower, 
                   max: joint.limit.upper, 
@@ -76,14 +86,13 @@ const RobotSimulator = () => {
       if (robot.joints['joint_4']) robot.joints['joint_4'].setJointValue(joints.joint_4);
       if (robot.joints['joint_5']) robot.joints['joint_5'].setJointValue(joints.joint_5);
       if (robot.joints['joint_6']) robot.joints['joint_6'].setJointValue(joints.joint_6);
-      if (robot.joints['stylus_pitch']) robot.joints['stylus_pitch'].setJointValue(joints.stylus_pitch);
     }
   });
 
   if (errorMsg) {
      return (
        <Html center>
-         <div style={{ color: 'red', background: 'rgba(0,0,0,0.8)', padding: '10px' }}>
+         <div style={{ color: 'red', background: 'rgba(255,255,255,0.8)', padding: '10px' }}>
            {errorMsg}
          </div>
        </Html>
@@ -92,24 +101,29 @@ const RobotSimulator = () => {
 
   return (
     <>
-      <gridHelper args={[5, 50, 0x333333, 0x111111]} />
+      {showGrid && <gridHelper args={[5, 50, 0x666666, 0xa0a0a0]} />}
       {robot && <primitive object={robot} />}
       
       {/* Render the keypad */}
-      <group>
+      <group rotation={[-Math.PI / 2, 0, 0]}>
         {keys.map(key => (
-          <mesh key={key.id} position={key.pos} castShadow receiveShadow>
-            <boxGeometry args={[0.04, 0.04, 0.02]} />
-            <meshStandardMaterial 
-              color={0x00ccff} 
-              emissive={0x00ccff} 
-              emissiveIntensity={0.5} 
-              roughness={0.1} 
-              metalness={0.8}
-              transparent
-              opacity={0.9}
-            />
-          </mesh>
+          <group key={key.id} position={key.pos}>
+            <RoundedBox args={[0.075, 0.075, 0.02]} radius={0.01} smoothness={4} castShadow receiveShadow>
+              <meshStandardMaterial color="#111111" roughness={0.6} metalness={0.4} />
+            </RoundedBox>
+            
+            <Text 
+              position={[0, 0, 0.012]} 
+              fontSize={0.04} 
+              color="#00ffcc" 
+              anchorX="center" 
+              anchorY="middle"
+              outlineWidth={0.0005}
+              outlineColor="#00ffcc"
+            >
+              {key.id}
+            </Text>
+          </group>
         ))}
       </group>
     </>
