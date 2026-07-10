@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store';
 import { NativeJoystick } from './NativeJoystick';
 import { commandBus } from '../bus/commandBus';
-
+import TypedCommandInput from '../triggers/voice/TypedCommandInput';
 const JoystickControls = () => {
   const { rpm, setRpm, activeJoint, setActiveJoint } = useStore();
   const rpmRef = useRef(rpm);
@@ -216,6 +216,7 @@ export const CommandCenter: React.FC = () => {
           {controlMode === 'Keyboard' && <>Keyboard</>}
           {controlMode === 'VOICE' && <>Voice Control</>}
           {controlMode === 'PIN' && <>Auto / PIN</>}
+          {controlMode === 'AGENTIC' && <>Agentic</>}
         </h2>
         <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ width: '32px', height: '32px', padding: 0, background: 'transparent', border: 'none', fontWeight: 'bold', fontSize: '1.4rem', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
           ☰
@@ -248,6 +249,11 @@ export const CommandCenter: React.FC = () => {
             onClick={() => { setControlMode('PIN'); setIsMenuOpen(false); }}
             style={{ padding: '1rem', background: controlMode === 'PIN' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'PIN' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >Auto / PIN</button>
+          
+          <button 
+            onClick={() => { setControlMode('AGENTIC'); setIsMenuOpen(false); }}
+            style={{ padding: '1rem', background: controlMode === 'AGENTIC' ? 'rgba(0,102,204,0.1)' : 'transparent', border: 'none', color: controlMode === 'AGENTIC' ? '#0066cc' : '#555', textAlign: 'left', borderRadius: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >Agentic</button>
         </div>
       )}
 
@@ -422,6 +428,13 @@ export const CommandCenter: React.FC = () => {
                 {voiceTranscript || 'Waiting for voice command...'}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* AGENTIC MODE */}
+        {controlMode === 'AGENTIC' && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0' }}>
+            <TypedCommandInput />
           </div>
         )}
 
