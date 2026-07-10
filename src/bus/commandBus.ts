@@ -75,6 +75,10 @@ class CommandBus {
       ikError
     });
   }
+
+  public dispatch(command: ArmCommand): void {
+    this.submit(command);
+  }
 }
 
 export const commandBus = new CommandBus();
