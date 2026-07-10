@@ -1,74 +1,52 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { commandBus } from '../../bus/commandBus';
+import { useState, useCallback } from 'react';
 import { parseUtterance, isParseError } from './grammar';
-import { auditLog } from '../../audit';
+import { commandBus } from '../../bus/commandBus';
 
 interface HistoryEntry {
-  id: string;
-  raw: string;
-  verdict: 'ACCEPTED' | 'REJECTED' | 'PENDING';
+  verdict: 'accepted' | 'rejected';
+  type?: string;
   reason?: string;
+  raw: string;
 }
 
-export const TypedCommandInput = () => {
+const TypedCommandInput = () => {
   const [text, setText] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const pendingRef = useRef<Set<string>>(new Set());
 
-  const poll = useCallback(() => {
-    const logs = auditLog.getLog();
-    setHistory(prev => {
-      const next = [...prev];
-      let changed = false;
-      for (const entry of logs) {
-        if (pendingRef.current.has(entry.command.id)) {
-          const idx = next.findIndex(h => h.id === entry.command.id);
-          if (idx !== -1) {
-            next[idx] = {
-              id: entry.command.id,
-              raw: next[idx].raw,
-              verdict: entry.verdict,
-              reason: entry.reason
-            };
-            changed = true;
-          }
-          pendingRef.current.delete(entry.command.id);
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(poll, 500);
-    return () => clearInterval(interval);
-  }, [poll]);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
     const result = parseUtterance(trimmed);
+
     if (isParseError(result)) {
-      const entryId = crypto.randomUUID();
-      setHistory(prev => [
-        { id: entryId, raw: trimmed, verdict: 'REJECTED', reason: result.reason },
-        ...prev
+      setHistory((prev) => [
+        { verdict: 'rejected', reason: result.reason, raw: result.raw },
+        ...prev,
       ].slice(0, 3));
       setText('');
       return;
     }
 
-    const cmd = { ...result, source: 'typed' as const };
-    pendingRef.current.add(cmd.id);
-    setHistory(prev => [
-      { id: cmd.id, raw: trimmed, verdict: 'PENDING' },
-      ...prev
+    const typedCmd = { ...result, source: 'typed' as const };
+    commandBus.dispatch(typedCmd);
+
+    setHistory((prev) => [
+      { verdict: 'accepted', type: result.type, raw: trimmed },
+      ...prev,
     ].slice(0, 3));
     setText('');
-    commandBus.dispatch(cmd);
-  };
+  }, [text]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [handleSubmit]
+  );
 
   return (
     <div
@@ -84,85 +62,81 @@ export const TypedCommandInput = () => {
         fontFamily: 'sans-serif',
       }}
     >
-      <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px' }}>
+      <div style={{ fontSize: '12px', opacity: 0.8, fontFamily: 'monospace' }}>
+        TYPED COMMAND
+      </div>
+
+      <div style={{ display: 'flex', gap: '4px' }}>
         <input
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Type command..."
+          onKeyDown={handleKeyDown}
+          placeholder="e.g. jog joint 1 by 30 degrees"
           style={{
             flex: 1,
-            padding: '8px',
+            background: 'rgba(255,255,255,0.1)',
+            border: '1px solid rgba(255,255,255,0.2)',
             borderRadius: '4px',
-            border: '1px solid #444',
-            background: '#222',
+            padding: '6px 8px',
             color: 'white',
-            fontSize: '14px',
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            outline: 'none',
           }}
         />
         <button
-          type="submit"
+          onClick={handleSubmit}
           style={{
-            padding: '8px 16px',
-            borderRadius: '4px',
+            background: '#22c55e',
             border: 'none',
-            background: '#3b82f6',
+            borderRadius: '4px',
+            padding: '6px 12px',
             color: 'white',
+            fontSize: '12px',
             cursor: 'pointer',
-            fontSize: '14px',
+            fontFamily: 'monospace',
           }}
         >
           Send
         </button>
-      </form>
+      </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        {history.length === 0 && (
-          <div style={{ opacity: 0.5, fontSize: '12px' }}>No commands yet</div>
-        )}
-        {history.map(entry => (
-          <div
-            key={entry.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 8px',
-              borderRadius: '4px',
-              background: entry.verdict === 'ACCEPTED' ? 'rgba(0,200,0,0.1)' :
-                         entry.verdict === 'REJECTED' ? 'rgba(255,0,0,0.1)' :
-                         'rgba(255,255,0,0.1)',
-              border: `1px solid ${
-                entry.verdict === 'ACCEPTED' ? '#00cc44' :
-                entry.verdict === 'REJECTED' ? '#ef4444' :
-                '#eab308'
-              }`,
-              fontSize: '12px',
-            }}
-          >
-            <span
+      {history.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {history.map((entry, i) => (
+            <div
+              key={i}
               style={{
-                padding: '2px 6px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+                padding: '4px 6px',
+                background: entry.verdict === 'accepted' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
                 borderRadius: '4px',
-                fontSize: '10px',
-                fontWeight: 'bold',
-                background: entry.verdict === 'ACCEPTED' ? '#00cc44' :
-                           entry.verdict === 'REJECTED' ? '#ef4444' :
-                           '#eab308',
-                color: 'white',
+                border: `1px solid ${entry.verdict === 'accepted' ? '#22c55e' : '#ef4444'}`,
               }}
             >
-              {entry.verdict}
-            </span>
-            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {entry.raw}
-            </span>
-            {entry.reason && (
-              <span style={{ opacity: 0.7, fontSize: '11px' }}>{entry.reason}</span>
-            )}
-          </div>
-        ))}
-      </div>
+              <span
+                style={{
+                  color: entry.verdict === 'accepted' ? '#22c55e' : '#ef4444',
+                  fontWeight: 'bold',
+                  minWidth: '60px',
+                }}
+              >
+                {entry.verdict.toUpperCase()}
+              </span>
+              <span style={{ color: '#9ca3af', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {entry.raw}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
+
+export default TypedCommandInput;
