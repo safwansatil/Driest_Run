@@ -29,7 +29,7 @@ export function initMouseTrigger(canvasElement: HTMLCanvasElement): () => void {
       commandBus.submit({
         id: crypto.randomUUID(),
         timestamp: Date.now(),
-        source: 'dashboard',
+        source: 'mouse',
         type: 'setJoint',
         joint: { name: `joint_${activeJoint}`, delta: direction * stepSize }
       });
@@ -39,6 +39,7 @@ export function initMouseTrigger(canvasElement: HTMLCanvasElement): () => void {
   const handleMouseDown = (e: MouseEvent) => {
     const state = useStore.getState();
     if (state.controlMode !== 'MOUSE' || state.cameraMode) return;
+    if (state.isEStop || state.mode === 'ERROR' || state.mode === 'EXECUTE') return;
     
     // Left click
     if (e.button === 0) startRotation(1);
@@ -58,6 +59,7 @@ export function initMouseTrigger(canvasElement: HTMLCanvasElement): () => void {
   const handleWheel = (e: WheelEvent) => {
     const state = useStore.getState();
     if (state.controlMode !== 'MOUSE' || state.cameraMode) return;
+    if (state.isEStop || state.mode === 'ERROR' || state.mode === 'EXECUTE') return;
     
     // Prevent default scrolling on canvas if we are using mouse mode
     e.preventDefault();

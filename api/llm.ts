@@ -149,10 +149,11 @@ export default async function handler(request: Request) {
       const payload: any = {
         model: 'gpt-4o-mini',
         messages: openAiMessages,
-        max_tokens: 1024
+        max_tokens: 1024,
       };
       if (openAiTools) {
         payload.tools = openAiTools;
+        payload.parallel_tool_calls = true;
       }
 
       const upstreamResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -185,14 +186,17 @@ export default async function handler(request: Request) {
           text: openAiMsg.content
         });
       }
-      if (openAiMsg?.tool_calls?.[0]) {
-        const tc = openAiMsg.tool_calls[0];
-        content.push({
-          type: 'tool_use',
-          id: tc.id,
-          name: tc.function.name,
-          input: JSON.parse(tc.function.arguments || '{}')
-        });
+      // Map ALL tool_calls — not just [0] — so sequences like "press key 3 then key 5"
+      // produce multiple tool_use blocks that agent.ts can execute sequentially.
+      if (openAiMsg?.tool_calls?.length > 0) {
+        for (const tc of openAiMsg.tool_calls) {
+          content.push({
+            type: 'tool_use',
+            id: tc.id,
+            name: tc.function.name,
+            input: JSON.parse(tc.function.arguments || '{}')
+          });
+        }
       }
 
       return new Response(JSON.stringify({ content }), {

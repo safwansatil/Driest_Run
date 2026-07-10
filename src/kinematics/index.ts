@@ -31,12 +31,12 @@ import * as THREE from 'three';
 // In reality, this would fetch '6_dof_arm.urdf', parse the XML, and extract limits.
 export function parseUrdfLimits(): Record<string, JointLimit> {
   return {
-    joint_1: { min: -3.14, max: 3.14, velocity: 2.5 },
-    joint_2: { min: -1.57, max: 1.57, velocity: 2.5 },
-    joint_3: { min: -2.0, max: 2.0, velocity: 3.0 },
-    joint_4: { min: -3.14, max: 3.14, velocity: 3.5 },
-    joint_5: { min: -1.57, max: 1.57, velocity: 4.0 },
-    joint_6: { min: -3.14, max: 3.14, velocity: 4.5 },
+    joint_1: { min: -3.1416, max: 3.1416, velocity: 2.5 },
+    joint_2: { min: -1.5708, max: 1.5708, velocity: 2.5 },
+    joint_3: { min: -2.6180, max: 2.6180, velocity: 3.0 },
+    joint_4: { min: -3.1416, max: 3.1416, velocity: 3.5 },
+    joint_5: { min: -2.0944, max: 2.0944, velocity: 4.0 },
+    joint_6: { min: -3.1416, max: 3.1416, velocity: 4.5 },
   };
 }
 

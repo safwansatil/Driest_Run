@@ -1,7 +1,7 @@
 import { commandBus } from '../bus/commandBus';
 import { fsm } from '../fsm';
 import { useStore } from '../store';
-import { getEndEffectorPose } from '../kinematics';
+
 
 export type SequencePhase = 'hovering' | 'descending' | 'pressed' | 'retracting';
 
@@ -12,9 +12,7 @@ export interface SequenceStatus {
   status: 'IDLE' | 'EXECUTING' | 'SUCCESS' | 'FAULT';
 }
 
-function dist(p1: {x:number, y:number, z:number}, p2: {x:number, y:number, z:number}) {
-  return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2) + Math.pow(p1.z - p2.z, 2));
-}
+
 
 export async function runPinSequence(
   pin: string, 

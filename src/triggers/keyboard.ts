@@ -10,7 +10,7 @@ export function initKeyboardTrigger(): () => void {
 
   const handleKeyDown = (e: KeyboardEvent) => {
     const state = useStore.getState();
-    if (state.isEStop || state.mode === 'ERROR' || state.mode === 'EXECUTE' || state.controlMode !== 'Keyboard') return;
+    if (state.isEStop || state.mode === 'ERROR' || state.mode === 'EXECUTE' || state.controlMode !== 'KEYBOARD') return;
 
     // Handle Joint Selection (1-6)
     if (e.code.startsWith('Digit')) {

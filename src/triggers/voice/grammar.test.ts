@@ -214,4 +214,17 @@ describe('parseUtterance', () => {
     expect(result.type).toBe('jog');
     expect(result.jointIndex).toBe(2);
   });
+
+  // punctuation tolerance
+  it('tolerates trailing periods and other punctuation', () => {
+    const result1 = parseUtterance('press key 6.');
+    if (result1.ok) throw new Error('Expected ok:true for press key 6.');
+    expect(result1.type).toBe('press_key');
+    expect(result1.keyIndex).toBe(6);
+
+    const result2 = parseUtterance('go home!');
+    if (result2.ok) throw new Error('Expected ok:true for go home!');
+    expect(result2.type).toBe('goto');
+    expect(result2.targetName).toBe('home');
+  });
 });

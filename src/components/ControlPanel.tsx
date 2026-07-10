@@ -20,9 +20,9 @@ export const ControlPanel: React.FC = () => {
   return (
     <div className="glass-panel" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1rem', zIndex: 10, boxSizing: 'border-box' }}>
       
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '0.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
         <Settings size={18} color="#0066cc" />
-        <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#111' }}>System Control</h2>
+        <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#fff' }}>System Control</h2>
       </div>
 
       {/* Mode Buttons */}
