@@ -19,7 +19,7 @@ The pipeline is a strict, linear progression. Every motion command must follow t
    - **MUST NOT**: Perform math, safety logic, or state mutation itself. It is only a coordinator.
 
 3. **FSM Module (`src/fsm/index.ts`)**
-   - **Responsibility**: Track the current state (IDLE, JOGGING, EXECUTING, ESTOPPED, FAULT) and decide if a new command can be accepted.
+   - **Responsibility**: Track the current state (IDLE, JOGGING, EXECUTING, ESTOPPED, FAULT, AUTONOMOUS_SEQUENCE) and decide if a new command can be accepted.
    - **MUST NOT**: Route commands or calculate angles.
 
 4. **Kinematics Module (`src/kinematics/index.ts`)**

@@ -20,13 +20,9 @@ const TypedCommandInput = () => {
     const result = parseUtterance(trimmed);
 
     if (isParseError(result)) {
-        { id: entryId, raw: trimmed, verdict: 'REJECTED', reason: result.reason } as HistoryEntry,
-        ...prev
-=======
       setHistory((prev) => [
-        { verdict: 'rejected', reason: result.reason, raw: result.raw },
+        { verdict: 'rejected', reason: result.reason, raw: result.raw || trimmed },
         ...prev,
-
       ].slice(0, 3));
       setText('');
       return;

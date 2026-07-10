@@ -17,8 +17,20 @@ class ArmFSM {
   }
 
   public reset(): void {
-    if (this.currentState === 'STOP' || this.currentState === 'ERROR') {
+    if (this.currentState === 'STOP' || this.currentState === 'ERROR' || this.currentState === 'AUTONOMOUS_PAUSED' || this.currentState === 'AUTONOMOUS_SEQUENCE') {
       this.currentState = 'REST';
+    }
+  }
+
+  public pause(): void {
+    if (this.currentState === 'AUTONOMOUS_SEQUENCE') {
+      this.currentState = 'AUTONOMOUS_PAUSED';
+    }
+  }
+
+  public resume(): void {
+    if (this.currentState === 'AUTONOMOUS_PAUSED') {
+      this.currentState = 'AUTONOMOUS_SEQUENCE';
     }
   }
 
@@ -41,9 +53,14 @@ class ArmFSM {
       return false;
     }
 
-    if (this.currentState === 'EXECUTE') {
+    if (this.currentState === 'EXECUTE' || this.currentState === 'AUTONOMOUS_SEQUENCE' || this.currentState === 'AUTONOMOUS_PAUSED') {
       // Reject manual overrides during autonomous execution, unless it's another auto command
       if (command.source !== 'autonomous') {
+        return false;
+      }
+      
+      // If paused, reject even autonomous commands (it must be resumed first)
+      if (this.currentState === 'AUTONOMOUS_PAUSED') {
         return false;
       }
     }

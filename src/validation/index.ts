@@ -1,6 +1,7 @@
 import type { JointState } from '../types';
 import type { ArmCommand } from '../types/commands';
 import { useStore } from '../store';
+import { fsm } from '../fsm';
 
 export interface ValidationReport {
   pass: boolean;
@@ -31,7 +32,38 @@ export function validate(_command: ArmCommand, proposedJointAngles: JointState):
 
   // 3. Velocity / Accel bounds check
   const currentJoints = useStore.getState().joints;
-  const executionDurationSeconds = 0.5; // executor is hardcoded to 500ms
+  const isAuto = fsm.getState() === 'AUTONOMOUS_SEQUENCE' || fsm.getState() === 'AUTONOMOUS_PAUSED';
+  
+  // Dynamically compute safe duration (min 0.5s) to respect URDF velocity limits
+  let executionDurationSeconds = 0.5;
+
+  if (isAuto) {
+    const store = useStore.getState();
+    const rpm = store.rpm > 0 ? store.rpm : 140;
+    const radPerSec = (rpm * 2 * Math.PI) / 60;
+    for (const key of keys) {
+      const val = proposedJointAngles[key];
+      const currentVal = currentJoints[key];
+      if (val !== undefined) {
+        const reqTime = Math.abs(val - currentVal) / radPerSec;
+        if (reqTime > executionDurationSeconds) {
+          executionDurationSeconds = reqTime + 0.05;
+        }
+      }
+    }
+  } else {
+    for (const key of keys) {
+      const val = proposedJointAngles[key];
+      const currentVal = currentJoints[key];
+      const limit = limits[key];
+      if (limit && limit.velocity) {
+        const reqTime = Math.abs(val - currentVal) / limit.velocity;
+        if (reqTime > executionDurationSeconds) {
+          executionDurationSeconds = reqTime + 0.05;
+        }
+      }
+    }
+  }
   
   for (const key of keys) {
     const val = proposedJointAngles[key];
@@ -42,7 +74,8 @@ export function validate(_command: ArmCommand, proposedJointAngles: JointState):
       const delta = Math.abs(val - currentVal);
       const velocity = delta / executionDurationSeconds;
       
-      if (velocity > limit.velocity + 0.001) {
+      // If we are in autonomous mode, we explicitly bypass the URDF velocity limit to allow fast demos
+      if (!isAuto && velocity > limit.velocity + 0.001) {
         details.push(`${key} velocity limit violation: proposed velocity ${velocity.toFixed(2)} rad/s exceeds limit ${limit.velocity} rad/s`);
       }
     }

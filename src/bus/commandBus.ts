@@ -112,7 +112,9 @@ class CommandBus {
     }
 
     // 4. Executor
-    fsm.transitionTo((command.type === 'jog' || (command.type === 'setJoint' && command.joint?.delta !== undefined)) ? 'JOGGING' : 'EXECUTE');
+    if (fsm.getState() !== 'AUTONOMOUS_SEQUENCE') {
+      fsm.transitionTo((command.type === 'jog' || (command.type === 'setJoint' && command.joint?.delta !== undefined)) ? 'JOGGING' : 'EXECUTE');
+    }
     
     execute(proposedJoints);
 
