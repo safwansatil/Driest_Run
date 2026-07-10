@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { JointState, CartesianPose } from '../types';
+import type { JointState, CartesianPose } from '../types';
 
 // Joint Limits from URDF
 export const JOINT_LIMITS = {
