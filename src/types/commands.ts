@@ -1,4 +1,4 @@
-export type CommandSource = 'dashboard' | 'joystick' | 'keyboard' | 'voice' | 'agentic' | 'autonomous' | 'typed';
+export type CommandSource = 'dashboard' | 'joystick' | 'keyboard' | 'voice' | 'agentic' | 'autonomous' | 'typed' | 'agent';
 
 export type CommandType = 'moveTo' | 'jog' | 'setJoint' | 'press_key' | 'enter_pin' | 'rotate_joint' | 'goto' | 'estop';
 

@@ -6,6 +6,7 @@ import CommandCenter from './components/CommandCenter';
 import ControlPanel from './components/ControlPanel';
 import VoicePanel from './triggers/voice/VoicePanel';
 import TypedCommandInput from './triggers/voice/TypedCommandInput';
+import AgentPanel from './agent/AgentPanel';
 import AuditLog from './components/AuditLog';
 import TelemetryDashboard from './components/TelemetryDashboard';
 import StatusBar from './components/StatusBar';
@@ -92,6 +93,7 @@ function App() {
             <ControlPanel />
             <VoicePanel />
             <TypedCommandInput />
+            <AgentPanel />
             <TelemetryDashboard />
             <div style={{ flex: 1, minHeight: 0 }}>
               <AuditLog />

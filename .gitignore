@@ -25,3 +25,7 @@ prompts.md
 *.njsproj
 *.sln
 *.sw?
+
+
+.env
+.vercel
