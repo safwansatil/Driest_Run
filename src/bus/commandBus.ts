@@ -64,7 +64,6 @@ class CommandBus {
     // 4. Executor
     fsm.transitionTo(command.type === 'jog' ? 'JOGGING' : 'EXECUTING');
     execute(proposedJoints);
-    fsm.transitionTo('IDLE'); // Instantly transition back for now since execute is instantaneous stub
 
     // 5. Audit Log
     auditLog.append({
