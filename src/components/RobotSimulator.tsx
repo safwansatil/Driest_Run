@@ -150,13 +150,19 @@ const RobotSimulator = () => {
           return (
             <group key={key.id} position={[key.pos[0], key.pos[1], key.pos[2] + zOffset]}>
               <RoundedBox args={[0.075, 0.075, 0.02]} radius={0.01} smoothness={4} castShadow receiveShadow>
-                <meshStandardMaterial color="#111111" roughness={0.9} metalness={0.8} />
+                <meshStandardMaterial 
+                  color={isActive ? "#ffffcc" : "#ffffff"} 
+                  emissive={isActive ? "#ffcc00" : "#000000"}
+                  emissiveIntensity={isActive ? 0.3 : 0}
+                  roughness={0.9} 
+                  metalness={0.8} 
+                />
               </RoundedBox>
               
               <Text 
                 position={[0, 0, 0.012]} 
                 fontSize={0.04} 
-                color={isActive ? "#ffcc00" : "#FAF9F6"} 
+                color="#000000" 
                 anchorX="center" 
                 anchorY="middle"
               >

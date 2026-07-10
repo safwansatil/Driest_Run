@@ -112,6 +112,20 @@ class CommandBus {
       proposedJoints = ikResult.jointAngles;
       ikError = ikResult.error;
       
+      const validationReport = validate(command, proposedJoints);
+      if (!validationReport.pass) {
+        auditLog.append({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          command,
+          verdict: 'REJECTED',
+          reason: validationReport.reason,
+          ikError
+        });
+        useStore.getState().setError(`Command Rejected: ${validationReport.reason}`);
+        return 'REJECTED';
+      }
+      
       if (ikError > 0.8) {
         const reason = `IK_FAILED_TO_CONVERGE (Error: ${ikError.toFixed(4)})`;
         auditLog.append({
