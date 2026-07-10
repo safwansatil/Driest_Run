@@ -179,7 +179,11 @@ class CommandBus {
       return 'REJECTED';
     }
 
-    fsm.transitionTo(command.type === 'jog' ? 'JOGGING' : 'EXECUTE');
+    // 4. Executor
+    if (fsm.getState() !== 'AUTONOMOUS_SEQUENCE') {
+      fsm.transitionTo((command.type === 'jog' || (command.type === 'setJoint' && command.joint?.delta !== undefined)) ? 'JOGGING' : 'EXECUTE');
+    }
+    
     execute(proposedJoints);
 
     auditLog.append({

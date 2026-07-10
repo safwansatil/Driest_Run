@@ -15,16 +15,62 @@ export function execute(validatedJointAngles: JointState): void {
     cancelAnimationFrame(currentAnimation);
   }
 
-  const duration = 500; // 500ms interpolation
-  const startTime = performance.now();
+  const limits = store.urdfLimits;
+  const isAuto = fsm.getState() === 'AUTONOMOUS_SEQUENCE' || fsm.getState() === 'AUTONOMOUS_PAUSED';
+  
+  let durationSeconds = 0.5;
+  const keys: (keyof JointState)[] = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6'];
+  
+  if (isAuto) {
+    const rpm = store.rpm > 0 ? store.rpm : 140;
+    const radPerSec = (rpm * 2 * Math.PI) / 60;
+    for (const key of keys) {
+      const val = validatedJointAngles[key];
+      if (val !== undefined) {
+        const reqTime = Math.abs(val - startJoints[key]) / radPerSec;
+        if (reqTime > durationSeconds) {
+          durationSeconds = reqTime + 0.05;
+        }
+      }
+    }
+  } else {
+    for (const key of keys) {
+      const val = validatedJointAngles[key];
+      const limit = limits[key];
+      if (val !== undefined && limit && limit.velocity) {
+        const reqTime = Math.abs(val - startJoints[key]) / limit.velocity;
+        if (reqTime > durationSeconds) {
+          durationSeconds = reqTime + 0.05;
+        }
+      }
+    }
+  }
+
+  const duration = durationSeconds * 1000;
+  let startTime = performance.now();
+  let accumulatedPauseTime = 0;
+  let lastPauseTime: number | null = null;
 
   function animate(time: number) {
-    if (fsm.getState() === 'STOP' || fsm.getState() === 'ERROR') {
+    if (fsm.getState() === 'STOP' || fsm.getState() === 'ERROR' || fsm.getState() === 'REST') {
       currentAnimation = null;
-      return; // Stop moving immediately on Stop
+      return; // Stop moving immediately on Stop/Reset
     }
 
-    const elapsed = time - startTime;
+    if (fsm.getState() === 'AUTONOMOUS_PAUSED') {
+      if (lastPauseTime === null) {
+        lastPauseTime = time;
+      }
+      currentAnimation = requestAnimationFrame(animate);
+      return; // Freeze the animation
+    }
+
+    if (lastPauseTime !== null) {
+      accumulatedPauseTime += (time - lastPauseTime);
+      lastPauseTime = null;
+    }
+
+    const elapsed = time - startTime - accumulatedPauseTime;
     const t = Math.min(elapsed / duration, 1.0);
     
     // Simple ease-in-out or linear lerp

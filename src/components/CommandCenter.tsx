@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '../store';
 import { NativeJoystick } from './NativeJoystick';
 import { commandBus } from '../bus/commandBus';
+import { runPinSequence, type SequenceStatus } from '../triggers/autonomous';
+import { fsm } from '../fsm';
 import TypedCommandInput from '../triggers/voice/TypedCommandInput';
 import { voiceTrigger, type VoiceState } from '../triggers/voice/voiceTrigger';
 
@@ -117,9 +119,16 @@ export const CommandCenter: React.FC = () => {
   const { mode, controlMode, setControlMode, setActiveCommand, addLog, cameraMode, setCameraMode, rpm, setRpm } = useStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
+  const joystickRef = useRef<HTMLDivElement>(null);
+  const zSliderRef = useRef<HTMLInputElement>(null);
+
   // Auto State
-  const [ikTarget, setIkTarget] = useState({ x: 0.2, y: 0.2, z: 1.0 });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authPin, setAuthPin] = useState('');
   const [pin, setPin] = useState('');
+  const [seqStatus, setSeqStatus] = useState<SequenceStatus | null>(null);
+  const [seqError, setSeqError] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
 
   // Voice State
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
@@ -127,42 +136,24 @@ export const CommandCenter: React.FC = () => {
 
   const isDisabled = mode === 'STOP' || mode === 'ERROR' || mode === 'EXECUTE';
 
-  // --- Mode 2: Absolute Target & PIN ---
-  const handleIKExecute = () => {
-    setActiveCommand({
-      id: crypto.randomUUID(),
-      timestamp: Date.now(),
-      source: 'dashboard',
-      type: 'moveTo',
-      target: { ...ikTarget, approach: [0, 0, -1] }
-    });
-    addLog({ source: 'dashboard', type: 'info', message: `Executing IK to (${ikTarget.x}, ${ikTarget.y}, ${ikTarget.z})` });
-  };
-
-  const runPINSequence = async () => {
+  const handleRunPin = () => {
     if (pin.length !== 6) return;
+    setSeqError('');
     
-    addLog({ source: 'autonomous', type: 'info', message: `Starting autonomous PIN sequence: ${pin}` });
-    
-    try {
-      const resp = await fetch('/key.config.json');
-      const config = await resp.json();
-      const keys = config.keys;
-
-      const firstDigit = pin[0];
-      const keyData = keys[firstDigit];
-      if (keyData) {
-        setActiveCommand({
-          id: crypto.randomUUID(),
-          timestamp: Date.now(),
-          source: 'autonomous',
-          type: 'moveTo',
-          target: { x: keyData.x, y: keyData.y, z: keyData.z + 0.02, approach: [0, 0, -1] }
-        });
-      }
-    } catch (err) {
-      console.error(err);
+    if (/[7890]/.test(pin)) {
+      setSeqError('Error: Physical keypad only contains keys 1-6');
+      return;
     }
+
+    setIsPaused(false);
+    addLog({ source: 'autonomous', type: 'info', message: `Starting autonomous sequence: ${pin}` });
+    
+    runPinSequence(pin, (status) => {
+      setSeqStatus({...status});
+      if (status.status === 'SUCCESS') {
+        addLog({ source: 'autonomous', type: 'success', message: 'PIN sequence completed successfully' });
+      }
+    });
   };
 
   // --- Mode 3: Voice ---
@@ -308,29 +299,85 @@ export const CommandCenter: React.FC = () => {
         {/* AUTO / PIN MODE */}
         {controlMode === 'PIN' && (
           <>
-            <div>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Absolute Target</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.7rem', color: '#555' }}>X</label>
-                  <input type="number" step="0.01" value={ikTarget.x} onChange={e => setIkTarget(prev => ({...prev, x: parseFloat(e.target.value) || 0}))} style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '4px', boxSizing: 'border-box' }} />
+            {!isAuthenticated ? (
+              <div style={{ textAlign: 'center' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: '#111' }}>🔒 System Locked</h3>
+                <p style={{ fontSize: '0.8rem', color: '#555', marginBottom: '1rem' }}>Enter secret PIN to unlock physical command execution.</p>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginBottom: '1rem' }}>
+                  <input 
+                    type="password" 
+                    value={authPin} 
+                    onChange={e => setAuthPin(e.target.value)} 
+                    placeholder="Secret PIN"
+                    style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', textAlign: 'center', width: '150px' }}
+                  />
                 </div>
-                <div>
-                  <label style={{ fontSize: '0.7rem', color: '#555' }}>Y</label>
-                  <input type="number" step="0.01" value={ikTarget.y} onChange={e => setIkTarget(prev => ({...prev, y: parseFloat(e.target.value) || 0}))} style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '4px', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.7rem', color: '#555' }}>Z</label>
-                  <input type="number" step="0.01" value={ikTarget.z} onChange={e => setIkTarget(prev => ({...prev, z: parseFloat(e.target.value) || 0}))} style={{ width: '100%', padding: '0.5rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '4px', boxSizing: 'border-box' }} />
-                </div>
+                <button 
+                  onClick={() => {
+                    if (authPin === (import.meta.env.VITE_SECRET_PIN || '117117')) {
+                      setIsAuthenticated(true);
+                      setAuthPin('');
+                    } else {
+                      alert('Access Denied');
+                    }
+                  }}
+                  style={{ padding: '0.5rem 1.5rem', background: 'linear-gradient(135deg, #0066cc, #004c99)', color: '#fff', border: 'none', borderRadius: '50px', cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  Authenticate
+                </button>
               </div>
-              <button onClick={handleIKExecute} style={{ width: '100%', padding: '0.85rem', background: 'linear-gradient(135deg, #0066cc, #004c99)', border: 'none', color: '#fff', borderRadius: '50px', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0, 102, 204, 0.3)', cursor: 'pointer', transition: 'transform 0.1s' }} onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'} onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}>EXECUTE IK TARGET</button>
-            </div>
+            ) : (
+              <div>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111' }}>🔓 Execute Physical Sequence</h3>
+                <p style={{ fontSize: '0.75rem', color: '#666', marginBottom: '1rem' }}>Enter a 6-digit sequence to press (keys 1-6 only).</p>
 
-            <hr style={{ border: 'none', borderTop: '1px solid rgba(0,0,0,0.1)', margin: '1.5rem 0' }} />
+                {seqError && (
+                  <div style={{ color: 'red', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '1rem', textAlign: 'center' }}>
+                    {seqError}
+                  </div>
+                )}
+                
+                {seqStatus && seqStatus.status !== 'IDLE' && (
+                  <div style={{ marginBottom: '1rem', background: seqStatus.status === 'FAULT' ? '#ffcccc' : (seqStatus.status === 'SUCCESS' ? '#ccffcc' : '#e6f7ff'), padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc', fontSize: '0.85rem' }}>
+                    <div style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                      Status: <span style={{ color: seqStatus.status === 'FAULT' ? 'red' : (seqStatus.status === 'SUCCESS' ? 'green' : 'blue') }}>{seqStatus.status}</span>
+                    </div>
+                    {seqStatus.status === 'EXECUTING' && seqStatus.activeDigitIndex >= 0 && (
+                      <>
+                        <div>Active Digit: <b>{seqStatus.pin[seqStatus.activeDigitIndex]}</b> (Index {seqStatus.activeDigitIndex + 1}/6)</div>
+                        <div>Phase: <b>{seqStatus.phase}</b></div>
+                        
+                        <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                          <button 
+                            onClick={() => {
+                              if (isPaused) {
+                                fsm.resume();
+                                setIsPaused(false);
+                              } else {
+                                fsm.pause();
+                                setIsPaused(true);
+                              }
+                            }} 
+                            style={{ padding: '0.35rem 1rem', cursor: 'pointer', background: '#fff', border: '1px solid #ccc', borderRadius: '4px', fontWeight: 'bold' }}
+                          >
+                            {isPaused ? '▶ Play' : '⏸ Pause'}
+                          </button>
+                          <button 
+                            onClick={() => { 
+                              fsm.reset(); 
+                              setSeqStatus({...seqStatus, status: 'FAULT'}); 
+                              setIsPaused(false);
+                            }} 
+                            style={{ padding: '0.35rem 1rem', cursor: 'pointer', color: 'red', background: '#fff', border: '1px solid #f99', borderRadius: '4px', fontWeight: 'bold' }}
+                          >
+                            ⏹ Reset
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
 
-            <div>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', color: '#111' }}>Autonomous Movement</h3>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                 {[0, 1, 2, 3, 4, 5].map((index) => (
                   <input 
@@ -354,12 +401,13 @@ export const CommandCenter: React.FC = () => {
                         document.getElementById(`pin-input-${index - 1}`)?.focus();
                       }
                     }}
+                    disabled={seqStatus?.status === 'EXECUTING'}
                     style={{ width: '2.2rem', height: '3rem', background: 'rgba(255,255,255,0.8)', border: '1px solid #ccc', color: '#111', borderRadius: '8px', fontSize: '1.2rem', textAlign: 'center', fontWeight: 'bold' }}
                   />
                 ))}
                 <button 
-                  onClick={runPINSequence} 
-                  disabled={pin.length !== 6} 
+                  onClick={handleRunPin} 
+                  disabled={pin.length !== 6 || seqStatus?.status === 'EXECUTING'} 
                   style={{ 
                     marginLeft: '0.25rem', width: '3rem', height: '3rem', flexShrink: 0,
                     background: pin.length === 6 ? 'linear-gradient(135deg, #9933ff, #7326bf)' : '#ccc', 
@@ -372,7 +420,8 @@ export const CommandCenter: React.FC = () => {
                   ▶
                 </button>
               </div>
-            </div>
+              </div>
+            )}
           </>
         )}
 
