@@ -36,7 +36,6 @@ export function parseUrdfLimits(): Record<string, JointLimit> {
     joint_4: { min: -3.14, max: 3.14, velocity: 3.5 },
     joint_5: { min: -1.57, max: 1.57, velocity: 4.0 },
     joint_6: { min: -3.14, max: 3.14, velocity: 4.5 },
-    stylus_pitch: { min: -1.0, max: 1.0, velocity: 5.0 },
   };
 }
 

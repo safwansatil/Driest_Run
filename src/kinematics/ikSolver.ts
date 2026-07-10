@@ -18,7 +18,6 @@ export const HOME_JOINTS: JointState = {
   joint_4: 0,
   joint_5: 0,
   joint_6: 0,
-  stylus_pitch: 0,
 };
 
 // Forward Kinematics: Computes the transformation matrices for each link in the base frame
@@ -65,19 +64,12 @@ export function forwardKinematics(joints: JointState): THREE.Matrix4[] {
       .multiply(new THREE.Matrix4().makeRotationZ(joints.joint_6))
   );
 
-  // J7 (stylus_pitch): stylus pitch (Y) at z = 0.150 relative to link_6
-  const T_stylus = T_j6.clone().multiply(
-    new THREE.Matrix4()
-      .makeTranslation(0, 0, 0.150)
-      .multiply(new THREE.Matrix4().makeRotationY(joints.stylus_pitch))
+  // Stylus Tip Frame: fixed translation (combined stylus length)
+  const T_tip = T_j6.clone().multiply(
+    new THREE.Matrix4().makeTranslation(0, 0, 0.287) // 0.150 + 0.137
   );
 
-  // Stylus Tip Frame: fixed translation z = 0.137 relative to stylus
-  const T_tip = T_stylus.clone().multiply(
-    new THREE.Matrix4().makeTranslation(0, 0, 0.137)
-  );
-
-  return [T_base, T_j1, T_j2, T_j3, T_j4, T_j5, T_j6, T_stylus, T_tip];
+  return [T_base, T_j1, T_j2, T_j3, T_j4, T_j5, T_j6, T_tip];
 }
 
 export function getStylusPose(joints: JointState): CartesianPose {
@@ -172,8 +164,8 @@ export function solveIK(
 ): { joints: JointState; converged: boolean; iterations: number; error: number } {
   
   const currentJoints = { ...initialJoints };
-  const jointKeys: (keyof JointState)[] = ['joint_1','joint_2','joint_3','joint_4','joint_5','joint_6','stylus_pitch'];
-  const m = 7;
+  const jointKeys: (keyof JointState)[] = ['joint_1','joint_2','joint_3','joint_4','joint_5','joint_6'];
+  const m = 6;
 
   let converged = false;
   let iterations = 0;

@@ -29,7 +29,7 @@ export interface SafetyReport {
   details: string[]; // Machine readable details for the agentic layer
 }
 
-export type ArmMode = "IDLE" | "JOGGING" | "EXECUTING" | "ESTOPPED";
+export type ArmMode = 'REST' | 'JOGGING' | 'EXECUTE' | 'ERROR' | 'STOP';
 
 export interface LogEntry {
   id: string;
