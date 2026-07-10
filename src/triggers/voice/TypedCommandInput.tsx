@@ -29,10 +29,10 @@ const TypedCommandInput = () => {
     }
 
     const typedCmd = { ...result, source: 'typed' as const };
-    await commandBus.dispatch(typedCmd);
+    const verdict = await commandBus.dispatch(typedCmd);
 
     setHistory((prev) => [
-      { verdict: 'accepted' as const, type: result.type, raw: trimmed },
+      { verdict: verdict as 'accepted' | 'rejected', type: result.type, raw: trimmed },
       ...prev,
     ].slice(0, 3));
     setText('');

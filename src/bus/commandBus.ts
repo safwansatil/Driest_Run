@@ -18,7 +18,7 @@ async function loadKeyConfig(): Promise<Record<string, { x: number; y: number; z
 }
 
 class CommandBus {
-  public async submit(command: ArmCommand): Promise<void> {
+  public async submit(command: ArmCommand): Promise<string> {
     if (!fsm.canAccept(command)) {
       auditLog.append({
         id: crypto.randomUUID(),
@@ -27,7 +27,7 @@ class CommandBus {
         verdict: 'REJECTED',
         reason: 'FSM_REJECTED'
       });
-      return;
+      return 'REJECTED';
     }
 
     if (command.type === 'estop') {
@@ -40,7 +40,7 @@ class CommandBus {
         verdict: 'ACCEPTED',
         reason: 'E-STOP ACTIVATED'
       });
-      return;
+      return 'ACCEPTED';
     }
 
     if (command.type === 'goto' && command.targetName === 'home') {
@@ -54,7 +54,7 @@ class CommandBus {
           verdict: 'REJECTED',
           reason: validationReport.reason
         });
-        return;
+        return 'REJECTED';
       }
       fsm.transitionTo('EXECUTE');
       execute(proposedJoints);
@@ -64,7 +64,7 @@ class CommandBus {
         command,
         verdict: 'ACCEPTED'
       });
-      return;
+      return 'ACCEPTED';
     }
 
     if (command.type === 'enter_pin') {
@@ -75,7 +75,7 @@ class CommandBus {
         verdict: 'ACCEPTED',
         reason: 'PIN_ENTERED'
       });
-      return;
+      return 'ACCEPTED';
     }
 
     let proposedJoints: JointState;
@@ -92,7 +92,7 @@ class CommandBus {
           verdict: 'REJECTED',
           reason: 'INVALID_KEY_INDEX'
         });
-        return;
+        return 'REJECTED';
       }
       const currentJoints = useStore.getState().joints;
       const target = { x: keyData.x, y: keyData.y, z: keyData.z, approach: [0, 0, -1] as [number, number, number] };
@@ -117,6 +117,11 @@ class CommandBus {
       const ikResult = solveIK(target, currentJoints);
       proposedJoints = ikResult.jointAngles;
       ikError = ikResult.error;
+    } else if (command.type === 'jog' && command.jointIndex !== undefined && command.deltaRad !== undefined) {
+      const currentJoints = useStore.getState().joints;
+      const keys: (keyof JointState)[] = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6'];
+      const jointName = keys[command.jointIndex];
+      proposedJoints = { ...currentJoints, [jointName]: currentJoints[jointName] + command.deltaRad };
     } else if (command.type === 'rotate_joint' && command.jointIndex !== undefined && command.absRad !== undefined) {
       const currentJoints = useStore.getState().joints;
       const keys: (keyof JointState)[] = ['joint_1', 'joint_2', 'joint_3', 'joint_4', 'joint_5', 'joint_6'];
@@ -130,7 +135,7 @@ class CommandBus {
         verdict: 'REJECTED',
         reason: 'UNSUPPORTED_COMMAND_TYPE'
       });
-      return;
+      return 'REJECTED';
     }
 
     const validationReport = validate(command, proposedJoints);
@@ -143,7 +148,7 @@ class CommandBus {
         reason: validationReport.reason,
         ikError
       });
-      return;
+      return 'REJECTED';
     }
 
     fsm.transitionTo(command.type === 'jog' ? 'JOGGING' : 'EXECUTE');
@@ -156,10 +161,11 @@ class CommandBus {
       verdict: 'ACCEPTED',
       ikError
     });
+    return 'ACCEPTED';
   }
 
-  public async dispatch(command: ArmCommand): Promise<void> {
-    await this.submit(command);
+  public async dispatch(command: ArmCommand): Promise<string> {
+    return this.submit(command);
   }
 }
 

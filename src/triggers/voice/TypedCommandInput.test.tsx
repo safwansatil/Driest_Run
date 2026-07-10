@@ -8,7 +8,7 @@ describe('TypedCommandInput', () => {
 
   beforeEach(() => {
     vi.resetModules();
-    dispatchSpy = vi.fn();
+    dispatchSpy = vi.fn().mockResolvedValue('ACCEPTED');
     vi.doMock('../../bus/commandBus', () => ({
       commandBus: { dispatch: dispatchSpy },
     }));
