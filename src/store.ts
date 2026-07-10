@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import type { JointState, ArmMode, LogEntry, ArmCommand, UrdfLimits } from './types';
 import { commandBus } from './bus/commandBus';
 
+export type ControlMode = 'JOYSTICK' | 'MOUSE' | 'WASD' | 'VOICE' | 'PIN';
+
 // Hardcoded fallback HOME_JOINTS if URDF hasn't loaded
 export const HOME_JOINTS: JointState = {
   joint_1: 0,
@@ -22,6 +24,15 @@ interface AppState {
   mode: ArmMode;
   setMode: (mode: ArmMode) => void;
   
+  controlMode: ControlMode;
+  setControlMode: (mode: ControlMode) => void;
+  
+  showGrid: boolean;
+  setShowGrid: (show: boolean) => void;
+  
+  backendError: string | null;
+  setError: (msg: string | null) => void;
+  
   isEStop: boolean;
   triggerEStop: () => void;
   resetEStop: () => void;
@@ -40,12 +51,21 @@ export const useStore = create<AppState>((set) => ({
   urdfLimits: {},
   setUrdfLimits: (urdfLimits) => set({ urdfLimits }),
 
-  mode: 'IDLE',
+  mode: 'REST',
   setMode: (mode) => set({ mode }),
   
+  controlMode: 'JOYSTICK',
+  setControlMode: (controlMode) => set({ controlMode }),
+  
+  showGrid: true,
+  setShowGrid: (showGrid) => set({ showGrid }),
+  
+  backendError: null,
+  setError: (backendError) => set({ backendError, mode: backendError ? 'ERROR' : 'REST' }),
+  
   isEStop: false,
-  triggerEStop: () => set({ isEStop: true, mode: 'ESTOPPED', activeCommand: null }),
-  resetEStop: () => set({ isEStop: false, mode: 'IDLE' }),
+  triggerEStop: () => set({ isEStop: true, mode: 'STOP', activeCommand: null }),
+  resetEStop: () => set({ isEStop: false, mode: 'REST', backendError: null }),
   
   logs: [],
   addLog: (logInfo) => set((state) => ({

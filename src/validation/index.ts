@@ -15,7 +15,7 @@ export function validate(_command: ArmCommand, proposedJointAngles: JointState):
   // 1. Joint Limits Check (Real logic, based on URDF parsing)
   const keys: (keyof JointState)[] = [
     'joint_1', 'joint_2', 'joint_3', 
-    'joint_4', 'joint_5', 'joint_6', 'stylus_pitch'
+    'joint_4', 'joint_5', 'joint_6'
   ];
 
   for (const key of keys) {

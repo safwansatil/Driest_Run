@@ -3,9 +3,9 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #1a1b1e;
+  color-scheme: light;
+  color: #333;
+  background-color: #e2e8f0;
 }
 
 body {
@@ -22,18 +22,18 @@ body {
 }
 
 .glass-panel {
-  background: rgba(30, 32, 36, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
   border-radius: 12px;
 }
 
 button {
-  background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2);
-  color: white;
+  background: rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.1);
+  color: #333;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
@@ -44,7 +44,7 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: rgba(255,255,255,0.2);
+  background: rgba(0,0,0,0.1);
 }
 
 button:disabled {
@@ -71,7 +71,7 @@ input[type=range]::-webkit-slider-thumb {
   height: 12px;
   width: 12px;
   border-radius: 50%;
-  background: #ffcc00;
+  background: #0066cc;
   cursor: pointer;
   margin-top: -4px;
 }
@@ -80,14 +80,14 @@ input[type=range]::-webkit-slider-runnable-track {
   width: 100%;
   height: 4px;
   cursor: pointer;
-  background: rgba(255,255,255,0.2);
+  background: rgba(0,0,0,0.1);
   border-radius: 2px;
 }
 
 /* Telemetry Dashboard Specifics */
 .telemetry-box {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(0, 204, 255, 0.2);
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 100, 255, 0.2);
   border-radius: 6px;
   padding: 0.5rem;
   display: flex;
@@ -98,8 +98,8 @@ input[type=range]::-webkit-slider-runnable-track {
 }
 
 .telemetry-box:hover {
-  border-color: rgba(0, 204, 255, 0.5);
-  box-shadow: inset 0 0 15px rgba(0, 204, 255, 0.1), 0 0 10px rgba(0, 204, 255, 0.2);
+  border-color: rgba(0, 100, 255, 0.5);
+  box-shadow: 0 4px 10px rgba(0, 100, 255, 0.1);
 }
 
 .telemetry-label {
@@ -113,8 +113,7 @@ input[type=range]::-webkit-slider-runnable-track {
 .telemetry-value {
   font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
   font-size: 1rem;
-  color: #00ccff;
+  color: #0066cc;
   font-weight: bold;
-  text-shadow: 0 0 5px rgba(0, 204, 255, 0.5);
   margin-top: 2px;
 }

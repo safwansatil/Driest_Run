@@ -62,7 +62,8 @@ class CommandBus {
     }
 
     // 4. Executor
-    fsm.transitionTo(command.type === 'jog' ? 'JOGGING' : 'EXECUTING');
+    fsm.transitionTo(command.type === 'jog' ? 'JOGGING' : 'EXECUTE');
+    
     execute(proposedJoints);
 
     // 5. Audit Log
