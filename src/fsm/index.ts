@@ -1,36 +1,34 @@
 import type { ArmCommand } from '../types/commands';
-
-export type ArmState = 'IDLE' | 'JOGGING' | 'EXECUTING' | 'ESTOPPED' | 'FAULT';
+import type { ArmMode } from '../types';
 
 class ArmFSM {
-  private currentState: ArmState = 'IDLE';
+  private currentState: ArmMode = 'REST';
 
-  public getState(): ArmState {
+  public getState(): ArmMode {
     return this.currentState;
   }
 
   public eStop(): void {
-    this.currentState = 'ESTOPPED';
+    this.currentState = 'STOP';
   }
 
   public fault(): void {
-    this.currentState = 'FAULT';
+    this.currentState = 'ERROR';
   }
 
   public reset(): void {
-    if (this.currentState === 'ESTOPPED' || this.currentState === 'FAULT') {
-      this.currentState = 'IDLE';
+    if (this.currentState === 'STOP' || this.currentState === 'ERROR') {
+      this.currentState = 'REST';
     }
   }
 
-  public transitionTo(newState: ArmState): boolean {
-    // E-stops and faults can happen from anywhere
-    if (newState === 'ESTOPPED' || newState === 'FAULT') {
+  public transitionTo(newState: ArmMode): boolean {
+    if (newState === 'STOP' || newState === 'ERROR') {
       this.currentState = newState;
       return true;
     }
 
-    if (this.currentState === 'ESTOPPED' || this.currentState === 'FAULT') {
+    if (this.currentState === 'STOP' || this.currentState === 'ERROR') {
       return false; // Must explicitly call reset() first
     }
 
@@ -39,11 +37,11 @@ class ArmFSM {
   }
 
   public canAccept(command: ArmCommand): boolean {
-    if (this.currentState === 'ESTOPPED' || this.currentState === 'FAULT') {
+    if (this.currentState === 'STOP' || this.currentState === 'ERROR') {
       return false;
     }
 
-    if (this.currentState === 'EXECUTING') {
+    if (this.currentState === 'EXECUTE') {
       // Reject manual overrides during autonomous execution, unless it's another auto command
       if (command.source !== 'autonomous') {
         return false;
