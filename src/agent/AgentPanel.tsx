@@ -112,8 +112,10 @@ const AgentPanel = () => {
         try {
           setTranscribing(true);
           const transcription = await transcribeWithWhisper(audioBlob, ''); // serverless fallback
-          if (transcription.trim()) {
-            setText(transcription.trim());
+          const trimmed = transcription.trim();
+          if (trimmed) {
+            setText('');
+            await runAgent(trimmed);
           }
         } catch (err: any) {
           console.error(err);
@@ -170,11 +172,10 @@ const AgentPanel = () => {
   return (
     <div
       style={{
-        background: 'rgba(0,0,0,0.7)',
-        borderRadius: '8px',
-        padding: '12px',
-        minWidth: '260px',
-        maxWidth: '320px',
+        background: 'transparent',
+        padding: '0 1rem',
+        width: '100%',
+        boxSizing: 'border-box',
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',
@@ -263,65 +264,61 @@ const AgentPanel = () => {
           </div>
         )}
 
-        {messages.map((msg) => {
-          let bg = 'transparent';
-          let border = 'none';
-          let textColor = '#e5e7eb';
-          let prefix = '';
+        {messages
+          .filter((msg) => msg.type !== 'tool_call')
+          .map((msg) => {
+            let bg = 'transparent';
+            let border = 'none';
+            let textColor = '#e5e7eb';
+            let prefix = '';
+            let displayText = msg.text;
 
-          if (msg.sender === 'user') {
-            bg = 'rgba(255,255,255,0.08)';
-            prefix = '👤 ';
-          } else if (msg.type === 'tool_call') {
-            bg = 'rgba(234,179,8,0.1)';
-            border = '1px dashed rgba(234,179,8,0.4)';
-            textColor = '#fef08a';
-            prefix = '🔧 ';
-          } else if (msg.type === 'clarify') {
-            bg = 'rgba(249,115,22,0.1)';
-            border = '1px solid rgba(249,115,22,0.4)';
-            textColor = '#ffedd5';
-            prefix = '❓ ';
-          } else if (msg.type === 'rejection') {
-            bg = 'rgba(239,68,68,0.1)';
-            border = '1px solid rgba(239,68,68,0.4)';
-            textColor = '#fee2e2';
-            prefix = '⚠️ ';
-          } else if (msg.type === 'confirmation') {
-            bg = 'rgba(34,197,94,0.1)';
-            border = '1px solid rgba(34,197,94,0.4)';
-            textColor = '#dcfce7';
-            prefix = '✅ ';
-          } else {
-            prefix = '🤖 ';
-          }
+            if (msg.sender === 'user') {
+              bg = 'rgba(255,255,255,0.08)';
+              prefix = '👤 ';
+            } else if (msg.type === 'clarify') {
+              bg = 'rgba(249,115,22,0.1)';
+              border = '1px solid rgba(249,115,22,0.4)';
+              textColor = '#ffedd5';
+              prefix = '❓ ';
+            } else if (msg.type === 'rejection') {
+              bg = 'rgba(239,68,68,0.1)';
+              border = '1px solid rgba(239,68,68,0.4)';
+              textColor = '#fee2e2';
+              prefix = '❌ ';
+              const cleanReason = msg.text.replace('Action rejected: ', '');
+              displayText = `Rejected: ${cleanReason}`;
+            } else if (msg.type === 'confirmation') {
+              bg = 'rgba(34,197,94,0.1)';
+              border = '1px solid rgba(34,197,94,0.4)';
+              textColor = '#dcfce7';
+              prefix = '✅ ';
+              displayText = 'Done';
+            } else {
+              prefix = '🤖 ';
+            }
 
-          const formattedText =
-            msg.type === 'tool_call' && msg.toolCallArgs
-              ? `${msg.text} (${JSON.stringify(msg.toolCallArgs)})`
-              : msg.text;
-
-          return (
-            <div
-              key={msg.id}
-              style={{
-                background: bg,
-                border: border,
-                borderRadius: '4px',
-                padding: '5px 8px',
-                fontSize: '11px',
-                lineHeight: '1.4',
-                color: textColor,
-                alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                maxWidth: '90%',
-                wordBreak: 'break-word',
-              }}
-            >
-              <span style={{ fontWeight: 'bold' }}>{prefix}</span>
-              {formattedText}
-            </div>
-          );
-        })}
+            return (
+              <div
+                key={msg.id}
+                style={{
+                  background: bg,
+                  border: border,
+                  borderRadius: '4px',
+                  padding: '5px 8px',
+                  fontSize: '11px',
+                  lineHeight: '1.4',
+                  color: textColor,
+                  alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                  maxWidth: '90%',
+                  wordBreak: 'break-word',
+                }}
+              >
+                <span style={{ fontWeight: 'bold' }}>{prefix}</span>
+                {displayText}
+              </div>
+            );
+          })}
 
         {/* Thinking Indicator */}
         {isThinking && (
@@ -338,7 +335,7 @@ const AgentPanel = () => {
             <span className="spin" style={{ display: 'inline-block' }}>
               ⏳
             </span>
-            <span>Agent is thinking...</span>
+            <span>Loading...</span>
           </div>
         )}
 

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { JointState, ArmMode, LogEntry, ArmCommand, UrdfLimits } from './types';
 import { commandBus } from './bus/commandBus';
 
-export type ControlMode = 'JOYSTICK' | 'MOUSE' | 'Keyboard' | 'VOICE' | 'PIN' | 'AGENTIC';
+export type ControlMode = 'JOYSTICK' | 'MOUSE' | 'KEYBOARD' | 'VOICE' | 'PIN' | 'AGENTIC';
 
 // Hardcoded fallback HOME_JOINTS if URDF hasn't loaded
 export const HOME_JOINTS: JointState = {
@@ -57,6 +57,9 @@ interface AppState {
   
   activeCommand: ArmCommand | null;
   setActiveCommand: (cmd: ArmCommand | null) => void;
+
+  activeSequenceDigit: string | null;
+  setActiveSequenceDigit: (digit: string | null) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -109,4 +112,7 @@ export const useStore = create<AppState>((set) => ({
       await commandBus.submit(cmd);
     }
   },
+
+  activeSequenceDigit: null,
+  setActiveSequenceDigit: (activeSequenceDigit) => set({ activeSequenceDigit }),
 }));

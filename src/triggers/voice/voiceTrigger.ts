@@ -3,6 +3,7 @@ import { parseUtterance, isParseError } from './grammar';
 import { auditLog } from '../../audit';
 import { transcribeWithWhisper } from '../../utils/whisperClient';
 import { startSilenceDetection } from '../../utils/silenceDetector';
+import { useStore } from '../../store';
 
 export type VoiceState = 'listening' | 'transcribing' | 'idle' | 'error' | 'unsupported';
 
@@ -87,6 +88,11 @@ function createVoiceTrigger(): VoiceTrigger {
       if (!trimmed) return;
 
       transcriptListeners.forEach((cb) => cb('', trimmed));
+
+      const activeMode = useStore.getState().controlMode;
+      if (activeMode !== 'VOICE') {
+        return;
+      }
 
       const result = parseUtterance(trimmed);
       if (isParseError(result)) {

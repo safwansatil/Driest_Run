@@ -102,12 +102,29 @@ class CommandBus {
       proposedJoints = ikResult.jointAngles;
       ikError = ikResult.error;
     } else if (command.type === 'setJoint' && command.joint) {
-      proposedJoints = { ...useStore.getState().joints, [command.joint.name]: command.joint.value };
+      const jointName = command.joint.name as keyof JointState;
+      const currentVal = useStore.getState().joints[jointName] || 0;
+      const newVal = command.joint.delta !== undefined ? currentVal + command.joint.delta : (command.joint.value || 0);
+      proposedJoints = { ...useStore.getState().joints, [jointName]: newVal };
     } else if (command.type === 'moveTo' && command.target) {
       const currentJoints = useStore.getState().joints;
       const ikResult = solveIK(command.target, currentJoints);
       proposedJoints = ikResult.jointAngles;
       ikError = ikResult.error;
+      
+      const validationReport = validate(command, proposedJoints);
+      if (!validationReport.pass) {
+        auditLog.append({
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          command,
+          verdict: 'REJECTED',
+          reason: validationReport.reason,
+          ikError
+        });
+        useStore.getState().setError(`Command Rejected: ${validationReport.reason}`);
+        return 'REJECTED';
+      }
       
       if (ikError > 0.8) {
         const reason = `IK_FAILED_TO_CONVERGE (Error: ${ikError.toFixed(4)})`;
@@ -184,7 +201,7 @@ class CommandBus {
       fsm.transitionTo((command.type === 'jog' || (command.type === 'setJoint' && command.joint?.delta !== undefined)) ? 'JOGGING' : 'EXECUTE');
     }
     
-    execute(proposedJoints);
+    await execute(proposedJoints);
 
     auditLog.append({
       id: crypto.randomUUID(),

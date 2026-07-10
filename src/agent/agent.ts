@@ -59,7 +59,9 @@ The key coordinates from key.config.json are:
 The workspace forbidden zones are: target coordinates with z < 0 are forbidden (ground collision limits).
 You must call clarify() rather than guess coordinates when the target or key is ambiguous, or when instructions lack necessary details.
 Always formulate commands exactly matching the tool definitions. You can propose commands or ask for clarification.
-Any proposed motion will be sent to the safety/validation gate. If rejected, you will be given the reason to re-plan.`;
+Any proposed motion will be sent to the safety/validation gate. If rejected, you will be given the reason to re-plan.
+
+IMPORTANT — SEQUENCES: When the user asks to perform multiple actions in sequence (e.g. "press key 3 then key 5", "press key 1 and then key 2"), you MUST emit ALL the required tool_use calls in a SINGLE response, one after another. Do NOT stop after the first tool call. Emit all tool_use blocks together so the system executes the full sequence.`;
 
   let maxAttempts = 3; // Initial proposal + max 2 retries
   let attempt = 0;
@@ -69,26 +71,18 @@ Any proposed motion will be sent to the safety/validation gate. If rejected, you
       const llmResponse = await callLLM(apiMessages, toolSchemas, { system: systemPrompt });
       
       const content = llmResponse.content || [];
-      const toolUseBlock = content.find(block => block.type === 'tool_use');
-      const textBlock = content.find(block => block.type === 'text');
+      // Collect ALL tool_use blocks so multi-step sequences (e.g. "press key 3 then key 5")
+      // are fully executed rather than stopping after the first tool call.
+      const toolUseBlocks = content.filter((block: any) => block.type === 'tool_use');
+      const textBlock = content.find((block: any) => block.type === 'text');
       
       const assistantText = textBlock?.text || '';
 
-      if (toolUseBlock) {
-        const { name, input, id: toolUseId } = toolUseBlock;
-        if (!name) {
-          throw new Error('Tool use block is missing a name');
-        }
-
-        store.addMessage({
-          sender: 'agent',
-          text: `Proposing action: ${name}`,
-          type: 'tool_call',
-          toolCallName: name,
-          toolCallArgs: input
-        });
-
-        if (name === 'clarify') {
+      if (toolUseBlocks.length > 0) {
+        // Handle clarify specially — it's always a single interactive call
+        const clarifyBlock = toolUseBlocks.find((b: any) => b.name === 'clarify');
+        if (clarifyBlock) {
+          const { input, id: toolUseId } = clarifyBlock;
           const question = input.question;
           store.addMessage({
             sender: 'agent',
@@ -110,7 +104,7 @@ Any proposed motion will be sent to the safety/validation gate. If rejected, you
             role: 'assistant',
             content: [
               { type: 'text', text: assistantText },
-              toolUseBlock
+              clarifyBlock
             ]
           });
 
@@ -125,7 +119,6 @@ Any proposed motion will be sent to the safety/validation gate. If rejected, you
             ]
           });
 
-          // Also push as a normal message for conversation continuity
           apiMessages.push({
             role: 'user',
             content: replyText
@@ -134,71 +127,88 @@ Any proposed motion will be sent to the safety/validation gate. If rejected, you
           continue;
         }
 
-        const command = mapToolCallToCommand(name, input);
-        if (!command) {
-          throw new Error(`Failed to map tool call ${name} to ArmCommand`);
-        }
+        // Execute all non-clarify tool calls sequentially
+        let allSucceeded = true;
+        for (const toolUseBlock of toolUseBlocks) {
+          const { name, input, id: toolUseId } = toolUseBlock;
+          if (!name) throw new Error('Tool use block is missing a name');
 
-        const verdict = await commandBus.dispatch(command);
-
-        if (verdict === 'ACCEPTED') {
-          const successMsg = `Action succeeded: ${name} executed successfully.`;
           store.addMessage({
             sender: 'agent',
-            text: successMsg,
-            type: 'confirmation'
+            text: `Proposing action: ${name}`,
+            type: 'tool_call',
+            toolCallName: name,
+            toolCallArgs: input
           });
 
-          if (store.speakResult) {
-            speak(`Action succeeded: ${name}`);
+          const command = mapToolCallToCommand(name, input);
+          if (!command) {
+            throw new Error(`Failed to map tool call ${name} to ArmCommand`);
           }
 
-          store.setThinking(false);
-          return;
-        } else {
-          attempt++;
-          const logs = auditLog.getLog();
-          const lastLog = logs[logs.length - 1];
-          const reason = lastLog?.reason || 'VALIDATION_FAILED';
+          const verdict = await commandBus.dispatch(command);
 
-          const rejectMsg = `Action rejected: ${reason}`;
-          store.addMessage({
-            sender: 'agent',
-            text: rejectMsg,
-            type: 'rejection'
-          });
-
-          if (attempt >= maxAttempts) {
-            const failureMsg = `Failed after max retries. Last rejection reason: ${reason}.`;
+          if (verdict === 'ACCEPTED') {
             store.addMessage({
-              sender: 'system',
-              text: failureMsg
+              sender: 'agent',
+              text: `Action succeeded: ${name} executed successfully.`,
+              type: 'confirmation'
             });
             if (store.speakResult) {
-              speak(`Action failed: ${reason}`);
+              speak(`Action succeeded: ${name}`);
             }
-            store.setThinking(false);
-            return;
-          }
+          } else {
+            allSucceeded = false;
+            attempt++;
+            const logs = auditLog.getLog();
+            const lastLog = logs[logs.length - 1];
+            const reason = lastLog?.reason || 'VALIDATION_FAILED';
 
-          apiMessages.push({
-            role: 'assistant',
-            content: [
-              { type: 'text', text: assistantText },
-              toolUseBlock
-            ]
-          });
+            store.addMessage({
+              sender: 'agent',
+              text: `Action rejected: ${reason}`,
+              type: 'rejection'
+            });
 
-          apiMessages.push({
-            role: 'user',
-            content: [
-              {
-                type: 'tool_result',
-                tool_use_id: toolUseId,
-                content: `Safety gate rejection: ${reason}. Please adjust parameters and try again.`
+            if (attempt >= maxAttempts) {
+              store.addMessage({
+                sender: 'system',
+                text: `Failed after max retries. Last rejection reason: ${reason}.`
+              });
+              if (store.speakResult) {
+                speak(`Action failed: ${reason}`);
               }
-            ]
-          });
+              store.setThinking(false);
+              return;
+            }
+
+            apiMessages.push({
+              role: 'assistant',
+              content: [
+                { type: 'text', text: assistantText },
+                toolUseBlock
+              ]
+            });
+
+            apiMessages.push({
+              role: 'user',
+              content: [
+                {
+                  type: 'tool_result',
+                  tool_use_id: toolUseId,
+                  content: `Safety gate rejection: ${reason}. Please adjust parameters and try again.`
+                }
+              ]
+            });
+
+            // Stop the sequence on first rejection and retry
+            break;
+          }
+        }
+
+        if (allSucceeded) {
+          store.setThinking(false);
+          return;
         }
       } else {
         if (assistantText) {

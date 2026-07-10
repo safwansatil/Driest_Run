@@ -34,8 +34,8 @@ export function generateHTMLReport(logs: AuditEntry[], controlMode: string, star
   <style>
     body {
       font-family: 'Segoe UI', system-ui, sans-serif;
-      background-color: #f8fafc;
-      color: #334155;
+      background-color: #111;
+      color: #e5e7eb;
       margin: 0;
       padding: 40px;
       line-height: 1.6;
@@ -43,22 +43,25 @@ export function generateHTMLReport(logs: AuditEntry[], controlMode: string, star
     .container {
       max-width: 900px;
       margin: 0 auto;
-      background: #ffffff;
+      background: #1a1a1a;
       padding: 40px;
       border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-      border: 1px solid #e2e8f0;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
     }
     h1 {
-      color: #0f172a;
-      border-bottom: 2px solid #e2e8f0;
+      color: #fff;
+      border-bottom: 2px solid rgba(255,255,255,0.1);
       padding-bottom: 15px;
       margin-top: 0;
+    }
+    h2 {
+      color: #ff8c00;
     }
     .header-info {
       display: flex;
       justify-content: space-between;
-      color: #64748b;
+      color: #9ca3af;
       margin-bottom: 30px;
       font-size: 0.95rem;
     }
@@ -69,13 +72,14 @@ export function generateHTMLReport(logs: AuditEntry[], controlMode: string, star
       margin-bottom: 40px;
     }
     .metric-card {
-      background: #f1f5f9;
+      background: rgba(255,255,255,0.05);
+      color: #e5e7eb;
       padding: 20px;
       border-radius: 8px;
       text-align: center;
     }
-    .metric-card.success { background: #d1fae5; color: #065f46; }
-    .metric-card.error { background: #fee2e2; color: #991b1b; }
+    .metric-card.success { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .metric-card.error { background: rgba(239,68,68,0.15); color: #f87171; }
     .metric-value {
       font-size: 2rem;
       font-weight: bold;
@@ -95,17 +99,21 @@ export function generateHTMLReport(logs: AuditEntry[], controlMode: string, star
     th, td {
       padding: 12px 15px;
       text-align: left;
-      border-bottom: 1px solid #e2e8f0;
+    }
+    td {
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      color: #e5e7eb;
     }
     th {
-      background: #f8fafc;
+      background: rgba(255,255,255,0.05);
       font-weight: 600;
-      color: #475569;
+      color: #9ca3af;
       text-transform: uppercase;
       font-size: 0.8rem;
       letter-spacing: 0.5px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
     }
-    tr:hover { background: #f8fafc; }
+    tr:hover { background: rgba(255,255,255,0.03); }
     .verdict-badge {
       padding: 4px 10px;
       border-radius: 20px;
@@ -113,8 +121,8 @@ export function generateHTMLReport(logs: AuditEntry[], controlMode: string, star
       font-weight: bold;
     }
     .source-badge {
-      background: #e2e8f0;
-      color: #475569;
+      background: rgba(255,255,255,0.1);
+      color: #9ca3af;
       padding: 3px 8px;
       border-radius: 4px;
       font-size: 0.75rem;
