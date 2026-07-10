@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '../store';
 import { NativeJoystick } from './NativeJoystick';
 import { commandBus } from '../bus/commandBus';
+import { voiceTrigger } from '../triggers/voice/voiceTrigger';
+import type { VoiceState } from '../triggers/voice/voiceTrigger';
 
 const JoystickControls = () => {
   const { rpm, setRpm, activeJoint, setActiveJoint } = useStore();
@@ -15,7 +17,7 @@ const JoystickControls = () => {
 
   // Handle Y-axis (Toggle Joint)
   const lastToggleRef = useRef(0);
-  const handleToggleMove = (x: number, y: number) => {
+  const handleToggleMove = (_x: number, y: number) => {
     const now = Date.now();
     if (Math.abs(y) > 0.5 && now - lastToggleRef.current > 300) {
       let next = activeJointRef.current + (y > 0 ? -1 : 1);
@@ -28,7 +30,7 @@ const JoystickControls = () => {
 
   // Handle Speed Stick
   const speedIntervalRef = useRef<number | null>(null);
-  const handleSpeedMove = (x: number, y: number) => {
+  const handleSpeedMove = (_x: number, y: number) => {
     if (Math.abs(y) > 0.1) {
       if (speedIntervalRef.current === null) {
         speedIntervalRef.current = window.setInterval(() => {
@@ -53,7 +55,7 @@ const JoystickControls = () => {
   const rotationDirRef = useRef(0);
   const rotationIntervalRef = useRef<number | null>(null);
 
-  const handleRotateMove = (x: number, y: number) => {
+  const handleRotateMove = (x: number, _y: number) => {
     if (x > 0.3) rotationDirRef.current = 1;
     else if (x < -0.3) rotationDirRef.current = -1;
     else rotationDirRef.current = 0;
@@ -120,7 +122,7 @@ export const CommandCenter: React.FC = () => {
   const [pin, setPin] = useState('');
 
   // Voice State
-  const [isListening, setIsListening] = useState(false);
+  const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [voiceTranscript, setVoiceTranscript] = useState('');
 
   const isDisabled = mode === 'STOP' || mode === 'ERROR' || mode === 'EXECUTE';
@@ -173,7 +175,7 @@ export const CommandCenter: React.FC = () => {
     });
 
     const unsubState = voiceTrigger.onState((state: VoiceState) => {
-      setIsListening(state === 'listening');
+      setVoiceState(state);
     });
 
     const unsubRejection = voiceTrigger.onRejection((rejection) => {
@@ -188,12 +190,13 @@ export const CommandCenter: React.FC = () => {
   }, [addLog]);
 
   const toggleVoice = useCallback(() => {
-    if (isListening) {
+    if (voiceState === 'transcribing') return;
+    if (voiceState === 'listening') {
       voiceTrigger.stopVoice();
     } else {
       voiceTrigger.startVoice();
     }
-  }, [isListening]);
+  }, [voiceState]);
 
   return (
     <div className="glass-panel" style={{ width: '100%', display: 'flex', flexDirection: 'column', zIndex: 10, boxSizing: 'border-box' }}>
@@ -372,17 +375,36 @@ export const CommandCenter: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', padding: '0.5rem 0' }}>
             <button 
               onClick={toggleVoice}
+              disabled={voiceState === 'transcribing'}
+              className={
+                voiceState === 'listening' 
+                  ? 'pulse-listening' 
+                  : (voiceState === 'transcribing' ? 'pulse-transcribing' : '')
+              }
               style={{
                 width: '120px', height: '120px', borderRadius: '50%',
-                background: isListening ? 'rgba(255,51,51,0.1)' : 'rgba(0,102,204,0.05)',
-                border: `2px solid ${isListening ? '#cc0000' : '#0066cc'}`,
-                color: isListening ? '#cc0000' : '#0066cc',
+                background: voiceState === 'listening' 
+                  ? 'rgba(255,51,51,0.1)' 
+                  : (voiceState === 'transcribing' ? 'rgba(234,179,8,0.1)' : 'rgba(0,102,204,0.05)'),
+                border: `2px solid ${
+                  voiceState === 'listening' 
+                    ? '#cc0000' 
+                    : (voiceState === 'transcribing' ? '#d97706' : '#0066cc')
+                }`,
+                color: voiceState === 'listening' 
+                  ? '#cc0000' 
+                  : (voiceState === 'transcribing' ? '#d97706' : '#0066cc'),
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                boxShadow: isListening ? '0 0 30px rgba(255,51,51,0.2)' : 'none',
-                transition: 'all 0.3s'
+                boxShadow: voiceState === 'listening' ? '0 0 30px rgba(255,51,51,0.2)' : 'none',
+                transition: 'all 0.3s',
+                cursor: voiceState === 'transcribing' ? 'not-allowed' : 'pointer'
               }}
             >
-              <span style={{ fontWeight: 'bold' }}>{isListening ? 'LISTENING' : 'TAP TO SPEAK'}</span>
+              <span style={{ fontWeight: 'bold' }}>
+                {voiceState === 'listening' && 'LISTENING'}
+                {voiceState === 'transcribing' && 'TRANSCRIBING...'}
+                {voiceState !== 'listening' && voiceState !== 'transcribing' && 'TAP TO SPEAK'}
+              </span>
               <div style={{ display: 'flex', gap: '4px', alignItems: 'flex-end', height: '24px', justifyContent: 'center', marginTop: '0.5rem' }}>
                 {[
                   { h: '60%', d: '0s' },
@@ -395,10 +417,10 @@ export const CommandCenter: React.FC = () => {
                     key={i} 
                     style={{ 
                       width: '4px', 
-                      background: isListening ? '#cc0000' : '#ccc', 
-                      height: isListening ? '20%' : '20%',
+                      background: voiceState === 'listening' ? '#cc0000' : '#ccc', 
+                      height: voiceState === 'listening' ? '20%' : '20%',
                       borderRadius: '2px',
-                      animation: isListening ? `sound-bounce-${i} 0.5s ease-in-out infinite alternate ${bar.d}` : 'none',
+                      animation: voiceState === 'listening' ? `sound-bounce-${i} 0.5s ease-in-out infinite alternate ${bar.d}` : 'none',
                       transition: 'background 0.3s'
                     }} 
                   />

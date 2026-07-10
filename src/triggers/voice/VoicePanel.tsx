@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { voiceTrigger } from './voiceTrigger';
 
-type VoiceState = 'listening' | 'idle' | 'error' | 'unsupported';
+type VoiceState = 'listening' | 'transcribing' | 'idle' | 'error' | 'unsupported';
 
 interface Rejection {
   reason: string;
@@ -19,6 +19,7 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
   const [transcripts, setTranscripts] = useState<{ partial: string; final: string }[]>([]);
   const [rejection, setRejection] = useState<Rejection | null>(null);
   const [state, setState] = useState<VoiceState>('idle');
+  const [volume, setVolume] = useState(0);
   const [apiKey, setApiKey] = useState(() => {
     if (typeof localStorage !== 'undefined') {
       return localStorage.getItem('openai_api_key') || '';
@@ -75,13 +76,19 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
     const unsubState = voiceTrigger.onState((s) => {
       setState(s);
       setListening(s === 'listening');
+      if (s !== 'listening') setVolume(0);
       onStateRef.current?.(s);
+    });
+
+    const unsubVolume = voiceTrigger.onVolume((vol) => {
+      setVolume(vol);
     });
 
     return () => {
       unsubTranscript();
       unsubRejection();
       unsubState();
+      unsubVolume();
       clearRejectionTimer();
     };
   }, [clearRejectionTimer]);
@@ -119,14 +126,14 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <button
           onClick={toggle}
-          disabled={state === 'unsupported'}
+          disabled={state === 'unsupported' || state === 'transcribing'}
           style={{
-            background: listening ? '#ef4444' : '#22c55e',
+            background: state === 'transcribing' ? '#eab308' : (listening ? '#ef4444' : '#22c55e'),
             border: 'none',
             borderRadius: '50%',
             width: '40px',
             height: '40px',
-            cursor: state === 'unsupported' ? 'not-allowed' : 'pointer',
+            cursor: (state === 'unsupported' || state === 'transcribing') ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -134,9 +141,9 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
             fontSize: '18px',
             flexShrink: 0,
           }}
-          title={listening ? 'Stop voice' : 'Start voice'}
+          title={state === 'transcribing' ? 'Transcribing...' : (listening ? 'Stop voice' : 'Start voice')}
         >
-          {listening ? '■' : '🎤'}
+          {state === 'transcribing' ? '⏳' : (listening ? '■' : '🎤')}
         </button>
         <span
           style={{
@@ -147,6 +154,26 @@ const VoicePanelInner = ({ onTranscript, onRejection, onState }: VoicePanelProps
         >
           {state.toUpperCase()}
         </span>
+        {state === 'listening' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '14px', flex: 1, marginLeft: '4px' }}>
+            {[1, 2, 3, 4, 5].map((barIndex) => {
+              const scale = 0.2 + volume * 1.8;
+              const height = Math.min(100, Math.max(15, barIndex * 15 * scale));
+              return (
+                <div
+                  key={barIndex}
+                  style={{
+                    width: '3px',
+                    height: `${height}%`,
+                    background: '#22c55e',
+                    borderRadius: '2px',
+                    transition: 'height 0.05s ease',
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
         <button
           onClick={() => setShowApiKeyInput(!showApiKeyInput)}
           style={{

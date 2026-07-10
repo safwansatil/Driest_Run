@@ -2,9 +2,9 @@ import nipplejs from 'nipplejs';
 import { commandBus } from '../bus/commandBus';
 import { useStore } from '../store';
 
-let leftManager: nipplejs.JoystickManager | null = null;
-let rightManager: nipplejs.JoystickManager | null = null;
-let speedManager: nipplejs.JoystickManager | null = null;
+let leftManager: any = null;
+let rightManager: any = null;
+let speedManager: any = null;
 let rotationIntervalRef: number | null = null;
 
 export function initDualJoystickGUI(
