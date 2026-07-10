@@ -60,6 +60,7 @@ export const AuditLog: React.FC = () => {
                 <span style={{ color: '#555', minWidth: '70px', fontWeight: 'bold' }}>[{log.command.source}]</span>
                 <span style={{ color, display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {log.command.type} - {log.verdict}
+                  {log.reason && <span style={{ opacity: 0.7 }}>({log.reason})</span>}
                 </span>
               </div>
             </div>

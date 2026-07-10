@@ -1,8 +1,8 @@
 import { commandBus } from '../bus/commandBus';
 
-export function handleKeyboardInput(dx: number, dy: number, dz: number): void {
+export async function handleKeyboardInput(dx: number, dy: number, dz: number): Promise<void> {
   if (dx !== 0 || dy !== 0 || dz !== 0) {
-    commandBus.submit({
+    await commandBus.submit({
       id: crypto.randomUUID(),
       source: 'keyboard',
       type: 'jog',

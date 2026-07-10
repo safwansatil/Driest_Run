@@ -1,5 +1,6 @@
 import { commandBus } from '../../bus/commandBus';
 import { parseUtterance, isParseError } from './grammar';
+import { auditLog } from '../../audit';
 
 declare global {
   interface SpeechRecognition {
@@ -108,7 +109,7 @@ function createVoiceTrigger(): VoiceTrigger {
       emitState('error');
     };
     rec.onend = () => emitState('idle');
-    rec.onresult = (event: SpeechRecognitionEvent) => {
+    rec.onresult = async (event: SpeechRecognitionEvent) => {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
@@ -116,8 +117,20 @@ function createVoiceTrigger(): VoiceTrigger {
           const result = parseUtterance(transcript);
           if (isParseError(result)) {
             rejectionListeners.forEach((cb) => cb({ reason: result.reason, raw: result.raw }));
+            auditLog.append({
+              id: crypto.randomUUID(),
+              timestamp: Date.now(),
+              command: {
+                id: crypto.randomUUID(),
+                source: 'voice',
+                type: 'moveTo',
+                timestamp: Date.now()
+              },
+              verdict: 'REJECTED',
+              reason: result.reason
+            });
           } else {
-            commandBus.dispatch(result);
+            await commandBus.dispatch(result);
           }
         } else {
           transcriptListeners.forEach((cb) => cb(transcript, ''));

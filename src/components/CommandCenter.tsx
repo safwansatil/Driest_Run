@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useStore } from '../store';
 
 import nipplejs from 'nipplejs';
+import { voiceTrigger } from '../triggers/voice/voiceTrigger';
+import type { VoiceState } from '../triggers/voice/voiceTrigger';
 
 export const CommandCenter: React.FC = () => {
   const { mode, controlMode, setControlMode, setActiveCommand, addLog } = useStore();
@@ -114,45 +116,35 @@ export const CommandCenter: React.FC = () => {
 
   // --- Mode 3: Voice ---
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    recognition.onstart = () => setIsListening(true);
-    recognition.onend = () => setIsListening(false);
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript.toLowerCase();
-      setVoiceTranscript(transcript);
-      addLog({ source: 'voice', type: 'info', message: `Recognized: "${transcript}"` });
-      
-      let delta = { x: 0, y: 0, z: 0 };
-      if (transcript.includes('up')) delta.z = 0.05;
-      if (transcript.includes('down')) delta.z = -0.05;
-      if (transcript.includes('left')) delta.y = 0.05;
-      if (transcript.includes('right')) delta.y = -0.05;
-      if (transcript.includes('forward')) delta.x = 0.05;
-      if (transcript.includes('back')) delta.x = -0.05;
-
-      if (delta.x !== 0 || delta.y !== 0 || delta.z !== 0) {
-        setActiveCommand({
-          id: crypto.randomUUID(),
-          timestamp: Date.now(),
-          source: 'voice',
-          type: 'jog',
-          delta
-        });
+    const unsubTranscript = voiceTrigger.onTranscript((_partial, final) => {
+      if (final) {
+        setVoiceTranscript(final);
+        addLog({ source: 'voice', type: 'info', message: `Recognized: "${final}"` });
       }
+    });
+
+    const unsubState = voiceTrigger.onState((state: VoiceState) => {
+      setIsListening(state === 'listening');
+    });
+
+    const unsubRejection = voiceTrigger.onRejection((rejection) => {
+      addLog({ source: 'voice', type: 'error', message: `Rejected: ${rejection.reason} (${rejection.raw})` });
+    });
+
+    return () => {
+      unsubTranscript();
+      unsubState();
+      unsubRejection();
     };
+  }, [addLog]);
 
-    if (isListening && !isDisabled) {
-      recognition.start();
+  const toggleVoice = useCallback(() => {
+    if (isListening) {
+      voiceTrigger.stopVoice();
+    } else {
+      voiceTrigger.startVoice();
     }
-
-    return () => { recognition.stop(); };
-  }, [isListening, isDisabled, setActiveCommand, addLog]);
+  }, [isListening]);
 
   return (
     <div className="glass-panel" style={{ width: '100%', display: 'flex', flexDirection: 'column', zIndex: 10, boxSizing: 'border-box' }}>
@@ -296,7 +288,7 @@ export const CommandCenter: React.FC = () => {
         {controlMode === 'VOICE' && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem', padding: '2rem 0' }}>
             <button 
-              onClick={() => setIsListening(!isListening)}
+              onClick={toggleVoice}
               style={{
                 width: '120px', height: '120px', borderRadius: '50%',
                 background: isListening ? 'rgba(255,51,51,0.1)' : 'rgba(0,102,204,0.05)',
