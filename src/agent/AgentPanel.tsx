@@ -3,6 +3,7 @@ import { useAgentStore } from './agentStore';
 import { runAgent } from './agent';
 import { callLLM } from './llmClient';
 import { DEMO_PROMPTS } from './demoPrompts';
+import { transcribeWithWhisper } from '../utils/whisperClient';
 
 const AgentPanel = () => {
   const {
@@ -18,7 +19,11 @@ const AgentPanel = () => {
   const [text, setText] = useState('');
   const [probeError, setProbeError] = useState<string | null>(null);
   const [probing, setProbing] = useState(true);
+  const [recording, setRecording] = useState(false);
+  
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Probe LLM Proxy on mount with a trivial request
   useEffect(() => {
@@ -66,6 +71,58 @@ const AgentPanel = () => {
     },
     [handleSubmit]
   );
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        stream.getTracks().forEach((t) => t.stop());
+
+        try {
+          setProbing(true); // Disable inputs while transcribing
+          const transcription = await transcribeWithWhisper(audioBlob, ''); // serverless fallback
+          if (transcription.trim()) {
+            setText(transcription.trim());
+          }
+        } catch (err: any) {
+          console.error(err);
+        } finally {
+          setProbing(false);
+        }
+      };
+
+      mediaRecorder.start();
+      setRecording(true);
+    } catch (err: any) {
+      console.error(err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && recording) {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+    }
+  };
+
+  const toggleRecording = () => {
+    if (recording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
 
   const displayError = probeError || error;
   const isInputDisabled = probing || !!probeError || isThinking;
@@ -278,9 +335,29 @@ const AgentPanel = () => {
         ))}
       </div>
 
-
       {/* Input Row */}
       <div style={{ display: 'flex', gap: '4px' }}>
+        <button
+          onClick={toggleRecording}
+          disabled={isInputDisabled && !recording}
+          style={{
+            background: recording ? '#ef4444' : 'rgba(255,255,255,0.1)',
+            border: 'none',
+            borderRadius: '4px',
+            width: '32px',
+            height: '32px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '14px',
+            padding: 0,
+          }}
+          title={recording ? 'Stop recording' : 'Record voice input'}
+        >
+          {recording ? '🔴' : '🎤'}
+        </button>
         <input
           type="text"
           value={text}

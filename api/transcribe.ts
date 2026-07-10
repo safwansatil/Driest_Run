@@ -41,7 +41,7 @@ export default async function handler(request: Request) {
     }
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', file as Blob, 'audio.webm');
     formData.append('model', 'whisper-1');
 
     const upstreamResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
