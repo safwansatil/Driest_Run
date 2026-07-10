@@ -47,16 +47,25 @@ describe('Agent Integration', () => {
   it('Case A: agent proposes press_key(3) -> gate approves -> audit shows source: agent', async () => {
     const dispatchSpy = vi.spyOn(commandBus, 'dispatch');
 
-    vi.mocked(callLLM).mockResolvedValue({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_1',
-          name: 'press_key',
-          input: { keyIndex: 3 },
-        },
-      ],
-    });
+    vi.mocked(callLLM)
+      .mockResolvedValueOnce({
+        content: [
+          {
+            type: 'tool_use',
+            id: 'tool_1',
+            name: 'press_key',
+            input: { keyIndex: 3 },
+          },
+        ],
+      })
+      .mockResolvedValue({
+        content: [
+          {
+            type: 'text',
+            text: 'I have pressed key 3.',
+          },
+        ],
+      });
 
     await runAgent('Press key 3');
 
@@ -70,41 +79,46 @@ describe('Agent Integration', () => {
   });
 
   it('Case B: agent proposes goto with coords outside reach sphere -> gate rejects -> retries with clarify() -> user replies -> gate approves', async () => {
-    // Attempt 1: proposes coordinates outside reach -> rejected
-    vi.mocked(callLLM).mockResolvedValueOnce({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_unreachable',
-          name: 'goto',
-          input: { target: { x: 1.5, y: 0.0, z: 0.3 } },
-        },
-      ],
-    });
-
-    // Attempt 2: receives rejection, asks clarifying question
-    vi.mocked(callLLM).mockResolvedValueOnce({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_clarify',
-          name: 'clarify',
-          input: { question: 'Target is unreachable. Where should I go instead?' },
-        },
-      ],
-    });
-
-    // Attempt 3: receives user response and goes to home (valid coordinate)
-    vi.mocked(callLLM).mockResolvedValueOnce({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_home',
-          name: 'goto',
-          input: { targetName: 'home' },
-        },
-      ],
-    });
+    // Setup sequential responses for the multi-turn agent loop
+    vi.mocked(callLLM)
+      .mockResolvedValueOnce({
+        content: [
+          {
+            type: 'tool_use',
+            id: 'tool_unreachable',
+            name: 'goto',
+            input: { target: { x: 1.5, y: 0.0, z: 0.3 } },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: [
+          {
+            type: 'tool_use',
+            id: 'tool_clarify',
+            name: 'clarify',
+            input: { question: 'Target is unreachable. Where should I go instead?' },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        content: [
+          {
+            type: 'tool_use',
+            id: 'tool_home',
+            name: 'goto',
+            input: { targetName: 'home' },
+          },
+        ],
+      })
+      .mockResolvedValue({
+        content: [
+          {
+            type: 'text',
+            text: 'I have arrived at home.',
+          },
+        ],
+      });
 
     const agentPromise = runAgent('Go to the target at x=1.5');
 
@@ -144,16 +158,25 @@ describe('Agent Integration', () => {
     // Reset callLLM mock implementation to prevent fallback to Case A mock
     vi.mocked(callLLM).mockReset();
     
-    vi.mocked(callLLM).mockResolvedValueOnce({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_estop',
-          name: 'estop',
-          input: {},
-        },
-      ],
-    });
+    vi.mocked(callLLM)
+      .mockResolvedValueOnce({
+        content: [
+          {
+            type: 'tool_use',
+            id: 'tool_estop',
+            name: 'estop',
+            input: {},
+          },
+        ],
+      })
+      .mockResolvedValue({
+        content: [
+          {
+            type: 'text',
+            text: 'Emergency stop activated.',
+          },
+        ],
+      });
 
     // Execute E-Stop command
     await runAgent('E-Stop now!');
@@ -162,16 +185,25 @@ describe('Agent Integration', () => {
     expect(useStore.getState().isEStop).toBe(true);
 
     // Now if agent tries to propose another command, it will be rejected by FSM
-    vi.mocked(callLLM).mockResolvedValueOnce({
-      content: [
-        {
-          type: 'tool_use',
-          id: 'tool_goto_home',
-          name: 'goto',
-          input: { targetName: 'home' },
-        },
-      ],
-    });
+    vi.mocked(callLLM)
+      .mockResolvedValueOnce({
+        content: [
+          {
+            type: 'tool_use',
+            id: 'tool_goto_home',
+            name: 'goto',
+            input: { targetName: 'home' },
+          },
+        ],
+      })
+      .mockResolvedValue({
+        content: [
+          {
+            type: 'text',
+            text: 'Cannot go home because E-Stop is active.',
+          },
+        ],
+      });
 
     await runAgent('Go home');
 

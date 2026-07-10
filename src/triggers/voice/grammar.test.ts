@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseUtterance } from './grammar';
+import { parseUtterance, parseUtteranceSequence } from './grammar';
 
 describe('parseUtterance', () => {
   // happy path: jog joint
@@ -294,6 +294,56 @@ describe('parseUtterance', () => {
     expect(resultAbsolute.type).toBe('rotate_joint');
     expect(resultAbsolute.jointIndex).toBe(0);
     expect(resultAbsolute.absRad).toBeCloseTo(45 * Math.PI / 180, 10);
+  });
+
+  // sequence and repetition parsing
+  describe('parseUtteranceSequence', () => {
+    it('parses a single command correctly', () => {
+      const res = parseUtteranceSequence('press key 3');
+      if ('ok' in res && !res.ok) throw new Error('Expected success');
+      expect(Array.isArray(res)).toBe(true);
+      expect(res.length).toBe(1);
+      expect(res[0].type).toBe('press_key');
+      expect(res[0].keyIndex).toBe(3);
+    });
+
+    it('parses sequential commands correctly', () => {
+      const res = parseUtteranceSequence('press key 3 then press key 2 and then go home');
+      if ('ok' in res && !res.ok) throw new Error('Expected success');
+      expect(res.length).toBe(3);
+      expect(res[0].type).toBe('press_key');
+      expect(res[0].keyIndex).toBe(3);
+      expect(res[1].type).toBe('press_key');
+      expect(res[1].keyIndex).toBe(2);
+      expect(res[2].type).toBe('goto');
+      expect(res[2].targetName).toBe('home');
+    });
+
+    it('parses repeated commands with "twice"', () => {
+      const res = parseUtteranceSequence('press key 5 twice');
+      if ('ok' in res && !res.ok) throw new Error('Expected success');
+      expect(res.length).toBe(2);
+      expect(res[0].type).toBe('press_key');
+      expect(res[0].keyIndex).toBe(5);
+      expect(res[1].type).toBe('press_key');
+      expect(res[1].keyIndex).toBe(5);
+    });
+
+    it('parses repeated commands with "N times"', () => {
+      const res = parseUtteranceSequence('jog joint 1 by 10 degrees three times');
+      if ('ok' in res && !res.ok) throw new Error('Expected success');
+      expect(res.length).toBe(3);
+      for (const cmd of res) {
+        expect(cmd.type).toBe('jog');
+        expect(cmd.jointIndex).toBe(0);
+        expect(cmd.deltaRad).toBeCloseTo(10 * Math.PI / 180, 10);
+      }
+    });
+
+    it('returns error if any command in sequence is invalid', () => {
+      const res = parseUtteranceSequence('press key 3 then garbage command');
+      expect('ok' in res && res.ok).toBe(false);
+    });
   });
 });
 

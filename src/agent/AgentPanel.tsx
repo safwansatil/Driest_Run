@@ -112,8 +112,10 @@ const AgentPanel = () => {
         try {
           setTranscribing(true);
           const transcription = await transcribeWithWhisper(audioBlob, ''); // serverless fallback
-          if (transcription.trim()) {
-            setText(transcription.trim());
+          const trimmed = transcription.trim();
+          if (trimmed) {
+            setText('');
+            await runAgent(trimmed);
           }
         } catch (err: any) {
           console.error(err);

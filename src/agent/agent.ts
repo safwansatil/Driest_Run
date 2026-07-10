@@ -4,6 +4,8 @@ import { commandBus } from '../bus/commandBus';
 import { auditLog } from '../audit';
 import { speak } from './tts';
 import { useAgentStore } from './agentStore';
+import { useStore } from '../store';
+
 
 let resolveUserReply: ((text: string) => void) | null = null;
 
@@ -158,8 +160,65 @@ Any proposed motion will be sent to the safety/validation gate. If rejected, you
             speak(`Action succeeded: ${name}`);
           }
 
-          store.setThinking(false);
-          return;
+          // Wait for the arm joints to settle if it is a motion command (and not running in test mode)
+          if (name !== 'estop' && name !== 'clarify' && name !== 'enter_pin' && !(typeof process !== 'undefined' && process.env.NODE_ENV === 'test')) {
+            await new Promise<void>((resolve) => {
+              let lastJoints = { ...useStore.getState().joints };
+              let unchangedTicks = 0;
+
+              const interval = setInterval(() => {
+                const state = useStore.getState();
+                if (state.mode === 'ERROR' || state.isEStop) {
+                  clearInterval(interval);
+                  resolve();
+                  return;
+                }
+
+                const currentJoints = state.joints;
+                const diffSq = 
+                  Math.pow(currentJoints.joint_1 - lastJoints.joint_1, 2) +
+                  Math.pow(currentJoints.joint_2 - lastJoints.joint_2, 2) +
+                  Math.pow(currentJoints.joint_3 - lastJoints.joint_3, 2) +
+                  Math.pow(currentJoints.joint_4 - lastJoints.joint_4, 2) +
+                  Math.pow(currentJoints.joint_5 - lastJoints.joint_5, 2) +
+                  Math.pow(currentJoints.joint_6 - lastJoints.joint_6, 2);
+
+                if (diffSq < 0.000001) {
+                  unchangedTicks++;
+                  if (unchangedTicks >= 4) { // ~200ms
+                    clearInterval(interval);
+                    resolve();
+                  }
+                } else {
+                  unchangedTicks = 0;
+                }
+                lastJoints = { ...currentJoints };
+              }, 50);
+            });
+          }
+
+          // Feed successful tool result back to LLM context
+          apiMessages.push({
+            role: 'assistant',
+            content: [
+              ...(assistantText ? [{ type: 'text', text: assistantText }] : []),
+              toolUseBlock
+            ]
+          });
+
+          apiMessages.push({
+            role: 'user',
+            content: [
+              {
+                type: 'tool_result',
+                tool_use_id: toolUseId,
+                content: `Tool executed successfully.`
+              }
+            ]
+          });
+
+          attempt = 0; // Reset attempts on successful execution
+          continue; // Loop again to let LLM decide next step
         } else {
           attempt++;
           const logs = auditLog.getLog();

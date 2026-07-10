@@ -247,3 +247,46 @@ export function parseUtterance(text: string): ArmCommand | ParseError {
 
   return { ok: false, reason: 'Unrecognized command', raw };
 }
+
+export function parseUtteranceSequence(text: string): ArmCommand[] | ParseError {
+  const parts = text.split(/\b(?:then|and\s+then)\b|,/gi);
+  const commands: ArmCommand[] = [];
+
+  for (const part of parts) {
+    let cleanPart = part.trim();
+    if (!cleanPart) continue;
+
+    let multiplier = 1;
+
+    // Detect repetition keywords (e.g. "twice", "double", "three times")
+    const twiceMatch = cleanPart.match(/\b(?:twice|double)\b$/i);
+    const timesMatch = cleanPart.match(/\b(\S+)\s+times\b$/i);
+
+    if (twiceMatch) {
+      multiplier = 2;
+      cleanPart = cleanPart.replace(/\b(?:twice|double)\b$/i, '').trim();
+    } else if (timesMatch) {
+      const parsedTimes = parseNumberToken(timesMatch[1]);
+      if (parsedTimes !== null) {
+        multiplier = Math.round(parsedTimes);
+      }
+      cleanPart = cleanPart.replace(/\b\S+\s+times\b$/i, '').trim();
+    }
+
+    const cmd = parseUtterance(cleanPart);
+    if (isParseError(cmd)) {
+      return cmd; // Abort entire sequence on any syntax error
+    }
+
+    for (let m = 0; m < multiplier; m++) {
+      commands.push({ ...cmd, id: crypto.randomUUID() });
+    }
+  }
+
+  if (commands.length === 0) {
+    return { ok: false, reason: 'Empty command sequence', raw: text };
+  }
+
+  return commands;
+}
+

@@ -1,8 +1,9 @@
 import { commandBus } from '../../bus/commandBus';
-import { parseUtterance, isParseError } from './grammar';
+import { parseUtterance, isParseError, parseUtteranceSequence } from './grammar';
 import { auditLog } from '../../audit';
 import { transcribeWithWhisper } from '../../utils/whisperClient';
 import { startSilenceDetection } from '../../utils/silenceDetector';
+import { executeCommandSequence } from '../../bus/sequenceExecutor';
 
 export type VoiceState = 'listening' | 'transcribing' | 'idle' | 'error' | 'unsupported';
 
@@ -88,7 +89,7 @@ function createVoiceTrigger(): VoiceTrigger {
 
       transcriptListeners.forEach((cb) => cb('', trimmed));
 
-      const result = parseUtterance(trimmed);
+      const result = parseUtteranceSequence(trimmed);
       if (isParseError(result)) {
         rejectionListeners.forEach((cb) => cb({ reason: result.reason, raw: result.raw }));
         auditLog.append({
@@ -104,7 +105,7 @@ function createVoiceTrigger(): VoiceTrigger {
           reason: result.reason,
         });
       } else {
-        await commandBus.dispatch(result);
+        await executeCommandSequence(result);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

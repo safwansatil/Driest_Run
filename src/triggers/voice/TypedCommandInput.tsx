@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
-import { parseUtterance, isParseError } from './grammar';
+import { parseUtterance, isParseError, parseUtteranceSequence } from './grammar';
 import { commandBus } from '../../bus/commandBus';
 import { voiceTrigger, type VoiceState } from './voiceTrigger';
+import { executeCommandSequence } from '../../bus/sequenceExecutor';
 
 interface HistoryEntry {
   verdict: 'accepted' | 'rejected';
@@ -43,7 +44,7 @@ const TypedCommandInput = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    const result = parseUtterance(trimmed);
+    const result = parseUtteranceSequence(trimmed);
 
     if (isParseError(result)) {
       setHistory((prev) => [
@@ -54,14 +55,20 @@ const TypedCommandInput = () => {
       return;
     }
 
-    const typedCmd = { ...result, source: 'typed' as const };
-    const verdict = await commandBus.dispatch(typedCmd);
-
-    setHistory((prev) => [
-      { verdict: verdict as 'accepted' | 'rejected', type: result.type, raw: trimmed },
-      ...prev,
-
-    ].slice(0, 3));
+    const typedCmds = result.map(cmd => ({ ...cmd, source: 'typed' as const }));
+    
+    try {
+      await executeCommandSequence(typedCmds);
+      setHistory((prev) => [
+        { verdict: 'accepted' as const, type: typedCmds[0]?.type || 'sequence', raw: trimmed },
+        ...prev,
+      ].slice(0, 3));
+    } catch (err: any) {
+      setHistory((prev) => [
+        { verdict: 'rejected' as const, reason: err.message || 'Execution failed', raw: trimmed },
+        ...prev,
+      ].slice(0, 3));
+    }
     setText('');
   }, [text]);
 
