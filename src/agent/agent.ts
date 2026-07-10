@@ -57,6 +57,11 @@ The key coordinates from key.config.json are:
 - Key 6: {"x": 0.6, "y": -0.05, "z": 0.05}
 
 The workspace forbidden zones are: target coordinates with z < 0 are forbidden (ground collision limits).
+
+Tool Selection Guidelines:
+- If the user specifies rotating a joint/base "by X degrees" or simply "X degrees" (e.g., "rotate base 30 degrees", "rotate joint 1 by 10 degrees"), this is a relative rotation. You MUST call the 'jog' tool with jointIndex and deltaRad (converted to radians).
+- If the user specifies rotating a joint/base "to X degrees" (e.g., "rotate base to 30 degrees"), this is an absolute rotation. You MUST call the 'rotate_joint' tool with jointIndex and absRad (converted to radians).
+
 You must call clarify() rather than guess coordinates when the target or key is ambiguous, or when instructions lack necessary details.
 Always formulate commands exactly matching the tool definitions. You can propose commands or ask for clarification.
 Any proposed motion will be sent to the safety/validation gate. If rejected, you will be given the reason to re-plan.`;

@@ -69,7 +69,15 @@ class CommandBus {
       return 'ACCEPTED';
     }
 
-    if (command.type === 'enter_pin') {
+    if (command.type === 'enter_pin' && command.digits) {
+      const pinStr = command.digits.join('');
+      // Dynamically import runPinSequence to avoid circular dependency
+      import('../triggers/autonomous')
+        .then(({ runPinSequence }) => {
+          runPinSequence(pinStr, () => {});
+        })
+        .catch(console.error);
+
       auditLog.append({
         id: crypto.randomUUID(),
         timestamp: Date.now(),

@@ -1,4 +1,6 @@
 import type { ArmCommand } from '../../types/commands';
+import { useStore } from '../../store';
+
 
 export interface ParseError {
   ok: false;
@@ -8,16 +10,22 @@ export interface ParseError {
 
 const WORD_NUMBERS: Record<string, number> = {
   'one': 1,
+  'won': 1,
   'two': 2,
+  'to': 2,
+  'too': 2,
   'three': 3,
   'four': 4,
+  'for': 4,
   'five': 5,
   'six': 6,
   'seven': 7,
   'eight': 8,
+  'ate': 8,
   'nine': 9,
   'ten': 10
 };
+
 
 const FILLER_RE = /\b(?:please|could\s+you|uh)\b/gi;
 
@@ -26,8 +34,9 @@ function stripFillers(text: string): string {
 }
 
 function normalize(text: string): string {
-  return text.toLowerCase().replace(/\s+/g, ' ').trim();
+  return text.toLowerCase().replace(/[.,!?]/g, '').replace(/\s+/g, ' ').trim();
 }
+
 
 function parseNumberToken(token: string): number | null {
   const trimmed = token.trim().toLowerCase();
@@ -49,6 +58,88 @@ export function parseUtterance(text: string): ArmCommand | ParseError {
   const raw = text;
   const cleaned = stripFillers(text);
   const normalized = normalize(cleaned);
+
+  const moveMatch = normalized.match(/^(?:move\s+)?(up|down|left|right|forward|backward)(?:\s+by)?(?:\s+(\S+))?(?:\s+(meters|meter|centimeters|centimeter|inches|inch|cms|cm|m))?$/);
+  if (moveMatch) {
+    const direction = moveMatch[1];
+    const valStr = moveMatch[2];
+    const unitStr = moveMatch[3];
+    
+    let distance = 0.05; // default fallback
+    try {
+      const stepSize = useStore.getState().stepSize;
+      if (typeof stepSize === 'number' && !isNaN(stepSize)) {
+        distance = stepSize;
+      }
+    } catch {
+      // ignore
+    }
+
+    if (valStr) {
+      const parsedVal = parseNumberToken(valStr);
+      if (parsedVal === null) {
+        return { ok: false, reason: `Invalid distance value: ${valStr}`, raw };
+      }
+      distance = parsedVal;
+      const unit = unitStr ? unitStr.toLowerCase() : 'meters';
+      if (unit.startsWith('cm') || unit.startsWith('cent')) {
+        distance = distance / 100;
+      } else if (unit.startsWith('inch')) {
+        distance = distance * 0.0254;
+      }
+    }
+
+    let dx = 0;
+    let dy = 0;
+    let dz = 0;
+
+    if (direction === 'up') dz = distance;
+    else if (direction === 'down') dz = -distance;
+    else if (direction === 'left') dy = distance;
+    else if (direction === 'right') dy = -distance;
+    else if (direction === 'forward') dx = distance;
+    else if (direction === 'backward') dx = -distance;
+
+    return {
+      type: 'jog',
+      source: 'voice',
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      delta: { x: dx, y: dy, z: dz }
+    };
+  }
+
+  const rotateBaseToMatch = normalized.match(/^(?:rotate\s+base|rotate\s+joint\s+1)\s+to\s+(\S+)\s+degrees$/);
+  if (rotateBaseToMatch) {
+    const deg = parseNumberToken(rotateBaseToMatch[1]);
+    if (deg === null) {
+      return { ok: false, reason: `Invalid degree value: ${rotateBaseToMatch[1]}`, raw };
+    }
+    return {
+      type: 'rotate_joint',
+      source: 'voice',
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      jointIndex: 0,
+      absRad: deg * Math.PI / 180
+    };
+  }
+
+  const rotateBaseMatch = normalized.match(/^(?:rotate\s+base|rotate\s+joint\s+1)\s+(?:by\s+)?(\S+)\s+degrees$/);
+  if (rotateBaseMatch) {
+    const deg = parseNumberToken(rotateBaseMatch[1]);
+    if (deg === null) {
+      return { ok: false, reason: `Invalid degree value: ${rotateBaseMatch[1]}`, raw };
+    }
+    return {
+      type: 'jog',
+      source: 'voice',
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      jointIndex: 0,
+      deltaRad: deg * Math.PI / 180
+    };
+  }
 
   const jogMatch = normalized.match(/^jog\s+joint\s+(\S+)\s+by\s+(\S+)\s+degrees$/);
   if (jogMatch) {
@@ -93,7 +184,7 @@ export function parseUtterance(text: string): ArmCommand | ParseError {
     };
   }
 
-  const pinMatch = normalized.match(/^enter\s+pin\s+(.+)$/);
+  const pinMatch = normalized.match(/^(?:enter\s+pin|press\s+pin)\s+(.+)$/);
   if (pinMatch) {
     const digitsStr = pinMatch[1].replace(/[\s-]/g, '');
     if (!/^\d+$/.test(digitsStr)) {

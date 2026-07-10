@@ -57,6 +57,14 @@ describe('parseUtterance', () => {
     expect(result.digits).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
+  // happy path: press pin with spaces
+  it('parses "press pin 1 2 3 4 5 6"', () => {
+    const result = parseUtterance('press pin 1 2 3 4 5 6');
+    if (result.ok) throw new Error('Expected ok:true');
+    expect(result.type).toBe('enter_pin');
+    expect(result.digits).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
   // happy path: rotate joint
   it('parses "rotate joint 2 to 90 degrees"', () => {
     const result = parseUtterance('rotate joint 2 to 90 degrees');
@@ -214,4 +222,78 @@ describe('parseUtterance', () => {
     expect(result.type).toBe('jog');
     expect(result.jointIndex).toBe(2);
   });
+
+  // punctuation tolerance
+  it('tolerates punctuation like periods, exclamation marks, and commas', () => {
+    const resultHome = parseUtterance('Go home.');
+    if (resultHome.ok) throw new Error('Expected ok:true');
+    expect(resultHome.type).toBe('goto');
+    expect(resultHome.targetName).toBe('home');
+
+    const resultStop = parseUtterance('Stop!');
+    if (resultStop.ok) throw new Error('Expected ok:true');
+    expect(resultStop.type).toBe('estop');
+
+    const resultJog = parseUtterance('jog joint 1, by 10 degrees.');
+    if (resultJog.ok) throw new Error('Expected ok:true');
+    expect(resultJog.type).toBe('jog');
+    expect(resultJog.jointIndex).toBe(0);
+  });
+
+  // homophone tolerance
+  it('parses homophone word numbers correctly', () => {
+    const resultTo = parseUtterance('press key to');
+    if (resultTo.ok) throw new Error('Expected ok:true');
+    expect(resultTo.type).toBe('press_key');
+    expect(resultTo.keyIndex).toBe(2);
+
+    const resultToo = parseUtterance('press key too');
+    if (resultToo.ok) throw new Error('Expected ok:true');
+    expect(resultToo.type).toBe('press_key');
+    expect(resultToo.keyIndex).toBe(2);
+
+    const resultFor = parseUtterance('press key for');
+    if (resultFor.ok) throw new Error('Expected ok:true');
+    expect(resultFor.type).toBe('press_key');
+    expect(resultFor.keyIndex).toBe(4);
+  });
+
+  // move commands
+  it('parses move direction commands with and without distance/units', () => {
+    const resultUp = parseUtterance('move up');
+    if (resultUp.ok) throw new Error('Expected ok:true');
+    expect(resultUp.type).toBe('jog');
+    expect(resultUp.delta?.z).toBeCloseTo(0.05, 10);
+
+    const resultLeft = parseUtterance('move left by 10 centimeters');
+    if (resultLeft.ok) throw new Error('Expected ok:true');
+    expect(resultLeft.type).toBe('jog');
+    expect(resultLeft.delta?.y).toBeCloseTo(0.1, 10);
+
+    const resultForward = parseUtterance('move forward 2 inches');
+    if (resultForward.ok) throw new Error('Expected ok:true');
+    expect(resultForward.type).toBe('jog');
+    expect(resultForward.delta?.x).toBeCloseTo(2 * 0.0254, 10);
+
+    const resultDown = parseUtterance('down by 3 m');
+    if (resultDown.ok) throw new Error('Expected ok:true');
+    expect(resultDown.type).toBe('jog');
+    expect(resultDown.delta?.z).toBeCloseTo(-3, 10);
+  });
+
+  // rotate base commands
+  it('parses rotate base commands correctly', () => {
+    const resultRelative = parseUtterance('rotate base 30 degrees');
+    if (resultRelative.ok) throw new Error('Expected ok:true');
+    expect(resultRelative.type).toBe('jog');
+    expect(resultRelative.jointIndex).toBe(0);
+    expect(resultRelative.deltaRad).toBeCloseTo(30 * Math.PI / 180, 10);
+
+    const resultAbsolute = parseUtterance('rotate base to 45 degrees');
+    if (resultAbsolute.ok) throw new Error('Expected ok:true');
+    expect(resultAbsolute.type).toBe('rotate_joint');
+    expect(resultAbsolute.jointIndex).toBe(0);
+    expect(resultAbsolute.absRad).toBeCloseTo(45 * Math.PI / 180, 10);
+  });
 });
+
