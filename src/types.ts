@@ -5,24 +5,15 @@ export interface JointState {
   joint_4: number;
   joint_5: number;
   joint_6: number;
-  stylus_pitch: number;
 }
 
 export interface UrdfLimits {
   [jointName: string]: { min: number; max: number; effort?: number; velocity?: number };
 }
 
-export type CommandSource = "dashboard" | "joystick" | "keyboard" | "voice" | "agentic" | "autonomous";
+import type { CommandSource, ArmCommand } from './types/commands';
 
-export type ArmCommand = {
-  id: string;                // uuid
-  source: CommandSource;
-  type: "moveTo" | "jog" | "setJoint";
-  target?: { x: number; y: number; z: number; approach?: [number, number, number] };
-  delta?: { x: number; y: number; z: number };
-  joint?: { name: string; value: number }; // only for type "setJoint"
-  timestamp: number;
-};
+export type { CommandSource, ArmCommand };
 
 export type SafetyRejectReason = 
   | 'OUT_OF_BOUNDS'

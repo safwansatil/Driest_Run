@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { JointState, ArmMode, LogEntry, ArmCommand, UrdfLimits } from './types';
+import { commandBus } from './bus/commandBus';
 
 // Hardcoded fallback HOME_JOINTS if URDF hasn't loaded
 export const HOME_JOINTS: JointState = {
@@ -9,7 +10,6 @@ export const HOME_JOINTS: JointState = {
   joint_4: 0,
   joint_5: 0,
   joint_6: 0,
-  stylus_pitch: 0,
 };
 
 interface AppState {
@@ -53,5 +53,10 @@ export const useStore = create<AppState>((set) => ({
   })),
   
   activeCommand: null,
-  setActiveCommand: (cmd) => set({ activeCommand: cmd }),
+  setActiveCommand: (cmd) => {
+    set({ activeCommand: cmd });
+    if (cmd) {
+      commandBus.submit(cmd);
+    }
+  },
 }));

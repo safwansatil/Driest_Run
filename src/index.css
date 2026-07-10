@@ -83,3 +83,38 @@ input[type=range]::-webkit-slider-runnable-track {
   background: rgba(255,255,255,0.2);
   border-radius: 2px;
 }
+
+/* Telemetry Dashboard Specifics */
+.telemetry-box {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 204, 255, 0.2);
+  border-radius: 6px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: inset 0 0 10px rgba(0, 204, 255, 0.05);
+  transition: all 0.2s ease-in-out;
+}
+
+.telemetry-box:hover {
+  border-color: rgba(0, 204, 255, 0.5);
+  box-shadow: inset 0 0 15px rgba(0, 204, 255, 0.1), 0 0 10px rgba(0, 204, 255, 0.2);
+}
+
+.telemetry-label {
+  font-size: 0.7rem;
+  color: #888;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.telemetry-value {
+  font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
+  font-size: 1rem;
+  color: #00ccff;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(0, 204, 255, 0.5);
+  margin-top: 2px;
+}

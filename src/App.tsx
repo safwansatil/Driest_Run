@@ -1,20 +1,17 @@
 import { useEffect } from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
 import RobotSimulator from './components/RobotSimulator';
 import ControlPanel from './components/ControlPanel';
 import AuditLog from './components/AuditLog';
+import TelemetryDashboard from './components/TelemetryDashboard';
 import ElectricalSchematic from './components/ElectricalSchematic';
 import { useStore } from './store';
-import { startExecutor, stopExecutor } from './kinematics/executor';
+import { handleKeyboardInput } from './triggers/keyboard';
 import './index.css';
 
 function App() {
-  const { setActiveCommand, isEStop } = useStore();
-
-  useEffect(() => {
-    // Start the physics/kinematics loop
-    startExecutor();
-    return () => stopExecutor();
-  }, []);
+  const { isEStop } = useStore();
 
   useEffect(() => {
     // Keyboard controls (WASD/QE)
@@ -34,26 +31,27 @@ function App() {
         }
         
         if (dx !== 0 || dy !== 0 || dz !== 0) {
-          setActiveCommand({
-            id: crypto.randomUUID(),
-            timestamp: Date.now(),
-            source: 'keyboard',
-            type: 'jog',
-            delta: { x: dx, y: dy, z: dz }
-          });
+          handleKeyboardInput(e.key.toLowerCase());
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isEStop, setActiveCommand]);
+  }, [isEStop]);
 
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', background: '#111', color: 'white', position: 'relative' }}>
       
       {/* 3D Background */}
-      <RobotSimulator />
+      <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}>
+        <Canvas camera={{ position: [1.2, 1.0, 1.2], fov: 55 }}>
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[2, 4, 3]} intensity={1} castShadow />
+          <RobotSimulator />
+          <OrbitControls />
+        </Canvas>
+      </div>
 
       {/* UI Overlay */}
       <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', display: 'flex', padding: '1rem', boxSizing: 'border-box' }}>
@@ -67,8 +65,9 @@ function App() {
           </div>
         </div>
         
-        {/* Right Side: Schematic */}
-        <div style={{ pointerEvents: 'auto', marginLeft: 'auto' }}>
+        {/* Right Side: Telemetry & Schematic */}
+        <div style={{ pointerEvents: 'auto', marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <TelemetryDashboard />
           <ElectricalSchematic />
         </div>
         
